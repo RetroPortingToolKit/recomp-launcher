@@ -54,6 +54,24 @@ void App::draw_netplay() {
         if (g->resume_netplay_room && g->resume_netplay_endpoint && *g->resume_netplay_endpoint)
             std::snprintf(np_address, sizeof np_address, "%s", g->resume_netplay_endpoint);
     }
+    {   // Opening the page connects by itself when the player has a session
+        // (a stored sign-in redeemed by the host): no Connect click needed.
+        // Guests keep the button; a stored key gets a few seconds to redeem.
+        static int last_frame = -2, auto_frames = 0;
+        const int f = ImGui::GetFrameCount();
+        if (f - last_frame > 1) auto_frames = 600;  // the page was just opened
+        last_frame = f;
+        if (auto_frames > 0) {
+            --auto_frames;
+            const bool on = (np->connected && np->connected(c)) || (np->connecting && np->connecting(c));
+            if (on) auto_frames = 0;
+            else if (np->account_state && np->account_state(c) == RECOMP_LAUNCHER_ACCOUNT_SIGNED_IN && np->connect) {
+                if (np->set_player_name) np->set_player_name(c, io->netplay_player_name);
+                np->connect(c);
+                auto_frames = 0;
+            }
+        }
+    }
     {   // Tell the host when the player enters / leaves netplay (it may change rows).
         static int last = -1;
         const int now = (np->in_lobby && np->in_lobby(c)) ? 1 : 0;
