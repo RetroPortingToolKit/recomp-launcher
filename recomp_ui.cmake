@@ -107,6 +107,11 @@ function(recomp_stage_launcher_assets TGT)
             "$<TARGET_FILE_DIR:${TGT}>/assets/skins"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${R4L_ROOT}/assets/i18n"
             "$<TARGET_FILE_DIR:${TGT}>/assets/i18n"
+        # assets/img always exists: release packagers stage its NOTICE.md
+        # (assets/common/img/NOTICE.md) there.
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TGT}>/assets/img"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${R4L_ROOT}/assets/common/img/NOTICE.md"
+            "$<TARGET_FILE_DIR:${TGT}>/assets/img/NOTICE.md"
         COMMENT "Staging launcher fonts and skins" VERBATIM)
     if(RSA_BOXART AND EXISTS "${RSA_BOXART}")
         set(_dest boxart.tga)
