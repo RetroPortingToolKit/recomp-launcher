@@ -57,8 +57,7 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
     // In-game launcher (launcher.in_game): no pre-game window. A match the
     // in-game menu's lobby started launches now; otherwise the game starts
     // when the disc is ready, and a first run shows disc setup only.
-    if (app.in_game && !std::getenv("R4L_SCREEN") && !std::getenv("R4L_SCREENSHOT") &&
-        !std::getenv("R4L_SCRIPT")) {
+    if (app.in_game && !std::getenv("R4L_SCREEN") && !std::getenv("R4L_SCREENSHOT")) {
         const RecompLauncherCNetplayCallbacks* np = game ? game->netplay : nullptr;
         if (io && np && np->launch_pending && np->launch_pending(np->ctx) && np->fill_launch) {
             RecompLauncherCNetplayLaunch l{};

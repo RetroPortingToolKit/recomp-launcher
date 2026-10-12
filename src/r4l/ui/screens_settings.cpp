@@ -2,6 +2,7 @@
 #include "skin.h"
 #include "ui.h"
 #include "script.h"
+#include "imgui_internal.h"
 #include "dialogs.h"
 
 #include "r4l/core/ini.h"
@@ -517,7 +518,7 @@ void App::draw_mods() {
             ImGui::PushID(idx);
             const ImVec2 p = ImGui::GetCursorScreenPos();
             const float rw = ImGui::GetContentRegionAvail().x;
-            if (ImGui::Selectable("##f", selected_feature == idx, 0, ImVec2(rw - 70, theme().row_h)))
+            if (ImGui::Selectable("##f", selected_feature == idx, ImGuiSelectableFlags_AllowOverlap, ImVec2(rw - 70, theme().row_h)))
                 selected_feature = idx;
             script_mark(f.info.name);
             if (ImGui::IsItemFocused()) selected_feature = idx;
@@ -541,6 +542,7 @@ void App::draw_mods() {
                 on = !on;
                 mods.set_enabled(f, on != 0);
             }
+            script_mark((std::string("mod:") + f.info.name).c_str());
             const ImVec2 a = ImGui::GetItemRectMin();
             dl->AddRectFilled(a, ImVec2(a.x + 50, a.y + h),
                               ImGui::ColorConvertFloat4ToU32(on ? theme().accent : theme().surface_hi), h * 0.5f);

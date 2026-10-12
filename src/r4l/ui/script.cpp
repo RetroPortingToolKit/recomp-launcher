@@ -25,6 +25,18 @@
 namespace {
 std::map<ImGuiID, ImRect> g_bb;
 std::map<std::string, ImRect> g_items, g_prev;
+std::string g_scroll_to;  // `tap`/`find`: bring this item into view while it is drawn
+void scroll_into_view(const std::string& l, const ImRect& bb) {
+    if (g_scroll_to.empty() || l != g_scroll_to) return;
+    ImGuiContext& g = *ImGui::GetCurrentContext();
+    for (ImGuiWindow* w = g.CurrentWindow; w; w = w->ParentWindow) {
+        if (w->ScrollMax.y > 0 || w->Scroll.y > 0) {  // the nearest scrolling window
+            ImGui::SetScrollFromPosY(w, bb.GetCenter().y - w->Pos.y, 0.5f);
+            break;
+        }
+    }
+    g_scroll_to.clear();
+}
 std::string visible(const char* label) {
     std::string l = label ? label : "";
     const size_t h = l.find("##");
@@ -37,7 +49,10 @@ void ImGuiTestEngineHook_ItemAdd(ImGuiContext*, ImGuiID id, const ImRect& bb, co
 void ImGuiTestEngineHook_ItemInfo(ImGuiContext*, ImGuiID id, const char* label, ImGuiItemStatusFlags) {
     const std::string l = visible(label);
     auto it = g_bb.find(id);
-    if (!l.empty() && it != g_bb.end() && !r4l_script_items_has(l)) g_items[l] = it->second;
+    if (!l.empty() && it != g_bb.end() && !r4l_script_items_has(l)) {
+        g_items[l] = it->second;
+        scroll_into_view(l, it->second);
+    }
 }
 void ImGuiTestEngineHook_Log(ImGuiContext*, const char*, ...) {}
 const char* ImGuiTestEngine_FindItemDebugLabel(ImGuiContext*, ImGuiID) { return nullptr; }
@@ -49,7 +64,10 @@ namespace r4l {
 void script_mark(const char* label) {  // row widgets: the row's own label
     if (!ImGui::GetCurrentContext() || !ImGui::GetCurrentContext()->TestEngineHookItems) return;
     const std::string l = visible(label);
-    if (!l.empty() && !g_items.count(l)) g_items[l] = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+    if (!l.empty() && !g_items.count(l)) {
+        g_items[l] = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        scroll_into_view(l, g_items[l]);
+    }
 }
 void script_frame_begin() {
     g_prev.swap(g_items);
@@ -157,6 +175,13 @@ void Script::step(App& app, Platform& plat) {
             auto it = g_prev.find(rest);
             const float vh = ImGui::GetIO().DisplaySize.y;
             const bool visible = it != g_prev.end() && it->second.Min.y >= 0 && it->second.Max.y <= vh * 0.86f;
+            if (!visible && it != g_prev.end() && scrolls_ == 0) {
+                // Drawn but off screen: scroll its window to it, then tap.
+                ++scrolls_;
+                g_scroll_to = rest;
+                lines_.insert(lines_.begin() + static_cast<long>(pc_), {"wait 3", "tap " + rest});
+                continue;
+            }
             if (!visible) {
                 // Off screen? Scroll the content pane towards it and look again.
                 const bool up = it != g_prev.end() && it->second.Min.y < 0;

@@ -219,6 +219,8 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
     if (host && host->mod_set_live)
         a.mods.live = [host, &a](const char* p, const char* f, const char* o, const char* v) {
             const int now = host->mod_set_live(host->ctx, p, f, o, v);
+            if (std::getenv("R4L_SCRIPT_DEBUG"))
+                std::fprintf(stderr, "[r4l] mod %s/%s %s=%s -> %s\n", p, f, o ? o : "(enabled)", v, now ? "live" : "restart");
             if (!now) a.mods_restart = true;  // saved; applies on the next start
             return now;
         };
@@ -339,6 +341,11 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         ImGui::GetCurrentContext()->TestEngineHookItems = true;
     }
     ImGui::NewFrame();
+    if (std::getenv("R4L_SCRIPT_DEBUG") && ImGui::GetIO().MouseClicked[0]) {
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        std::fprintf(stderr, "[r4l] click at %.0f,%.0f over %s\n", g.IO.MousePos.x, g.IO.MousePos.y,
+                     g.HoveredWindow ? g.HoveredWindow->Name : "(none)");
+    }
     o.app->frame();
     ImGui::Render();
     glViewport(0, 0, fb_w, fb_h);

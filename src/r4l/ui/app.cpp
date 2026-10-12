@@ -690,6 +690,7 @@ void App::draw_setup() {
         if (ImGui::InputTextWithHint("##path", "/path/to/R4 - Ridge Racer Type 4 (USA).cue", buf, sizeof(buf),
                                      ImGuiInputTextFlags_EnterReturnsTrue))
             s.set_disc(static_cast<int>(i), buf);
+        script_mark(i == 0 ? "field:disc_path" : "field:disc_path_more");
         ImGui::SameLine();
         if (ImGui::Button("Browse...", ImVec2(-1, 0))) {
             static std::string pat, desc;
