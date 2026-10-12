@@ -47,6 +47,44 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
     App& app = *holder;
     std::string assets = resolve_assets_dir(assets_dir);
     app.begin(io, game, assets.c_str(), initial_rom);
+    auto write_rom = [&] {
+        if (out_rom_path && out_rom_path_len) {
+            const std::string rom =
+                app.s.primary_disc().empty() ? (initial_rom ? initial_rom : "") : app.s.primary_disc();
+            std::snprintf(out_rom_path, out_rom_path_len, "%s", rom.c_str());
+        }
+    };
+    // In-game launcher (launcher.in_game): no pre-game window. A match the
+    // in-game menu's lobby started launches now; otherwise the game starts
+    // when the disc is ready, and a first run shows disc setup only.
+    if (app.in_game && !std::getenv("R4L_SCREEN") && !std::getenv("R4L_SCREENSHOT") &&
+        !std::getenv("R4L_SCRIPT")) {
+        const RecompLauncherCNetplayCallbacks* np = game ? game->netplay : nullptr;
+        if (io && np && np->launch_pending && np->launch_pending(np->ctx) && np->fill_launch) {
+            RecompLauncherCNetplayLaunch l{};
+            if (np->fill_launch(np->ctx, &l) && l.enabled &&
+                (!game->mods || !game->mods->commit_netplay ||
+                 game->mods->commit_netplay(game->mods->ctx, app.s.primary_disc().c_str()))) {
+                std::string err;
+                io->netplay_launch = l;
+                app.s.persist_media(&err);
+                app.s.commit_files(&err);
+                app.s.outcome = Outcome::Launch;
+                std::fprintf(stdout, "r4l: in-game menu match -> launch\n");
+            }
+            if (np->clear_launch_pending) np->clear_launch_pending(np->ctx);
+        }
+        if (app.s.outcome == Outcome::None && app.s.media_ready() && !app.s.needs_setup()) app.request_launch();
+        if (app.s.outcome == Outcome::Launch) {
+            app.job.join();
+            write_rom();
+            return RECOMP_LAUNCHER_RESULT_LAUNCH;
+        }
+        if (!app.s.media_ready()) {
+            app.setup_only = true;
+            app.screen = Screen::Setup;
+        }
+    }
 
     int w = 1280, h = 800;
     load_window_size(app.s.launcher_prefs_path(), &w, &h);
@@ -91,10 +129,7 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
     skin().unload();  // fonts/textures belong to this ImGui/GL context
     plat.close(g_preserve_sdl != 0);
 
-    if (out_rom_path && out_rom_path_len) {
-        const std::string rom = app.s.primary_disc().empty() ? (initial_rom ? initial_rom : "") : app.s.primary_disc();
-        std::snprintf(out_rom_path, out_rom_path_len, "%s", rom.c_str());
-    }
+    write_rom();
     switch (app.s.outcome) {
     case Outcome::Launch: return RECOMP_LAUNCHER_RESULT_LAUNCH;
     case Outcome::Relaunch:

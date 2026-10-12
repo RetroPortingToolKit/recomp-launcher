@@ -42,8 +42,11 @@ typedef struct RecompOverlayHost {
                          const char* option_id /* NULL = enable flag */, const char* value);
     /* Reload keybinds.ini/input.ini/config.ini after the overlay wrote them. */
     void (*reload_bindings)(void* ctx);
-    /* "Quit to launcher" / "Quit game" from the overlay. */
-    void (*request_exit)(void* ctx, int to_launcher);
+    /* Leave the running game. how: 0 quit; 1 end the session and return to
+     * the launcher loop in-process (recomp_launcher_run_window runs again,
+     * e.g. to start a match the in-game lobby set up); 2 relaunch this
+     * process with the same arguments (restart-only settings). */
+    void (*request_exit)(void* ctx, int how);
 } RecompOverlayHost;
 
 /* Call once on the GL thread with the runtime's window and current context. */

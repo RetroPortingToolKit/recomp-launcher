@@ -13,6 +13,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -37,6 +38,7 @@ struct Overlay {
     const RecompOverlayHost* host = nullptr;
     std::string assets;
     bool gl_ready = false;
+    std::string disc_at_open;           // render thread
     std::atomic<bool> open{false};
     std::atomic<bool> opening{false};   // main asked to open; render applies
     std::atomic<bool> closing{false};   // render asked to close; main applies
@@ -156,6 +158,8 @@ void apply_transitions(Overlay& o) {
         a.screen = Screen::Graphics;
         a.focus_request = Screen::Graphics;
         if (a.s.io) a.opened = a.applied = *a.s.io;
+        o.disc_at_open = a.s.primary_disc();
+        a.exit_requested = false;
         skin().play("confirm");
     }
     if (o.closing.exchange(false) || !a.overlay_open) {
@@ -166,6 +170,17 @@ void apply_transitions(Overlay& o) {
         a.overlay_open = false;
         o.open = false;
         skin().play("back");
+        // In-game launcher: edits that only take effect at start-up are
+        // applied by a quick relaunch when the menu closes.
+        if (a.in_game && !a.netplay_locked && !a.exit_requested && o.host && o.host->request_exit) {
+            const bool disc = a.s.primary_disc() != o.disc_at_open;
+            if (disc) a.s.persist_media(&err);
+            if (a.applied_bits || a.mods_restart || disc) {
+                std::fprintf(stdout, "r4l: relaunching for restart-only changes\n");
+                a.exit_requested = true;
+                o.host->request_exit(o.host->ctx, 2);
+            }
+        }
     }
 }
 
@@ -197,8 +212,10 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
     a.host = host;
     a.begin(io, game, g_ov->assets.c_str(), nullptr);
     if (host && host->mod_set_live)
-        a.mods.live = [host](const char* p, const char* f, const char* o, const char* v) {
-            return host->mod_set_live(host->ctx, p, f, o, v);
+        a.mods.live = [host, &a](const char* p, const char* f, const char* o, const char* v) {
+            const int now = host->mod_set_live(host->ctx, p, f, o, v);
+            if (!now) a.mods_restart = true;  // saved; applies on the next start
+            return now;
         };
     if (const char* c = std::getenv("R4L_OVERLAY_COMBO")) g_ov->combo = static_cast<unsigned>(std::strtoul(c, nullptr, 0));
     ImGuiContext* prev = ImGui::GetCurrentContext();

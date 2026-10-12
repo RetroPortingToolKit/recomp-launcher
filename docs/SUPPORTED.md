@@ -52,6 +52,7 @@ below is generated from the catalog (`tools/gen_supported.py`, checked by ctest)
 <!-- BEGIN CAPABILITIES -->
 | Key | Area | What it is | Default | Settings field |
 |---|---|---|---|---|
+| `launcher.in_game` | Launcher | Boot into the game; launcher pages live in the in-game menu | Hidden | - |
 | `disc.setup` | Disc | Disc setup (pick, verify) | Shown | - |
 | `disc.autoscan` | Disc | Find the disc automatically | Shown | - |
 | `disc.sbi` | Disc | Import SBI subchannel | Shown | - |

@@ -10,6 +10,8 @@ namespace r4l {
 
 const std::vector<Capability>& capabilities() {
     static const std::vector<Capability> k = {
+        // ---- Launcher
+        {"launcher.in_game", false, "Launcher", "Boot into the game; launcher pages live in the in-game menu", -1},
         // ---- Disc / first run
         {"disc.setup", true, "Disc", "Disc setup (pick, verify)", -1},
         {"disc.autoscan", true, "Disc", "Find the disc automatically", -1},

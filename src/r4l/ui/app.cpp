@@ -343,6 +343,8 @@ void App::begin(RecompLauncherCSettings* io, const RecompLauncherCGameInfo* game
         surf.apply(io);  // Locked / Auto values from the title's manifest
     }
     s.begin(io, game, assets_dir, initial_rom);
+    // RECOMP_LAUNCHER_PREGAME (psxrecomp --launcher) keeps the old pre-game launcher.
+    in_game = surf.automatic("launcher.in_game") && !std::getenv("RECOMP_LAUNCHER_PREGAME");
     mods.bind(game ? game->mods : nullptr);
 #if defined(PSX_MOD_DEVELOPER_CHANNEL)
     mods.refresh(true);

@@ -1,6 +1,7 @@
 // screen_netplay.cpp — host / join (code or address) / lobby with seats P1..Pn.
 #include "ui.h"
 #include "script.h"
+#include "recomp_launcher_overlay.h"
 
 #include <cstdio>
 #include <cstring>
@@ -246,7 +247,18 @@ void App::draw_netplay() {
             }
         }
         // Everyone launches together once the host's start goes through.
-        if (np->launch_pending && np->launch_pending(c) && np->fill_launch) {
+        if (mode == Mode::Overlay && np->launch_pending && np->launch_pending(c)) {
+            // In-game menu: end this session; the launcher loop the runtime
+            // returns to starts the match (run_window's in-game path).
+            if (!exit_requested && this->host && this->host->request_exit) {
+                exit_requested = true;
+                std::string err;
+                s.persist_media(&err);
+                s.commit_files(&err);
+                np_status = "Starting the match...";
+                this->host->request_exit(this->host->ctx, 1);
+            }
+        } else if (np->launch_pending && np->launch_pending(c) && np->fill_launch) {
             RecompLauncherCNetplayLaunch l{};
             if (np->fill_launch(c, &l) && l.enabled) {
                 std::string err;

@@ -77,6 +77,10 @@ struct App {
     unsigned applied_bits = 0;                 // host's answer: RECOMP_OVERLAY_RESTART_*
     bool overlay_open = false;
     bool netplay_locked = false;               // overlay during netplay: no pause, local-view only
+    bool in_game = false;                      // launcher.in_game: no pre-game launcher
+    bool setup_only = false;                   // in-game first run: disc setup, then play
+    bool mods_restart = false;                 // overlay: a mod change waits for a restart
+    bool exit_requested = false;               // overlay: request_exit already sent
     Screen last_focus_screen = Screen::Count;
     int last_nav_hover = -1;
     std::string skin_dir;
