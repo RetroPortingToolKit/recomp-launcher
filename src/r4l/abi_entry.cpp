@@ -74,12 +74,17 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
             }
             if (np->clear_launch_pending) np->clear_launch_pending(np->ctx);
         }
-        if (app.s.outcome == Outcome::None && app.s.media_ready()) app.request_launch();
+        if (app.s.outcome == Outcome::None && app.s.media_ready()) {
+            app.ensure_disc_assets();  // the in-game menu's disc-sourced skin art
+            app.request_launch();
+        }
         if (app.s.outcome == Outcome::Launch) {
             app.job.join();
             write_rom();
             return RECOMP_LAUNCHER_RESULT_LAUNCH;
         }
+        std::fprintf(stderr, "r4l: in-game launch held: %s\n",
+                     app.s.status.empty() ? "no disc yet" : app.s.status.c_str());
         if (!app.s.media_ready()) {
             app.setup_only = true;
             app.screen = Screen::Setup;

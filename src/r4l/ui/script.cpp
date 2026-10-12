@@ -99,6 +99,8 @@ void Script::step(App& app, Platform& plat) {
             int steps = 0;
             std::istringstream a(rest);
             a >> x >> y >> steps;
+            x *= coord_scale;
+            y *= coord_scale;
             SDL_zero(e);
             e.type = SDL_EVENT_MOUSE_MOTION;
             e.motion.windowID = win;

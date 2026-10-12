@@ -3,10 +3,12 @@
 #include "recomp_launcher_overlay.h"
 
 #include "r4l/ui/platform.h"
+#include "r4l/ui/script.h"
 #include "r4l/ui/skin.h"
 #include "r4l/ui/ui.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl3.h"
 
@@ -39,6 +41,9 @@ struct Overlay {
     std::string assets;
     bool gl_ready = false;
     std::string disc_at_open;           // render thread
+    std::unique_ptr<Script> script;     // R4L_OVERLAY_SCRIPT (tests): drives the in-game menu
+    Platform* script_plat = nullptr;    // the host's window, for the script's events
+    bool script_done = false;
     std::atomic<bool> open{false};
     std::atomic<bool> opening{false};   // main asked to open; render applies
     std::atomic<bool> closing{false};   // render asked to close; main applies
@@ -217,6 +222,20 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
             if (!now) a.mods_restart = true;  // saved; applies on the next start
             return now;
         };
+    if (const char* sp = std::getenv("R4L_OVERLAY_SCRIPT")) {
+        g_ov->script = std::make_unique<Script>();
+        if (g_ov->script->load(sp)) {
+            g_ov->script_plat = new Platform();  // never closed: the window is the host's
+            g_ov->script_plat->window = g_ov->window;
+#if defined(_WIN32)
+            _putenv_s("R4L_OVERLAY_SCRIPT", "");  // a quick relaunch must not run it again
+#else
+            unsetenv("R4L_OVERLAY_SCRIPT");
+#endif
+        } else {
+            g_ov->script.reset();
+        }
+    }
     if (const char* c = std::getenv("R4L_OVERLAY_COMBO")) g_ov->combo = static_cast<unsigned>(std::strtoul(c, nullptr, 0));
     ImGuiContext* prev = ImGui::GetCurrentContext();
     g_ov->ctx = ImGui::CreateContext();
@@ -278,6 +297,17 @@ extern "C" void recomp_overlay_set_open(int open) {
 }
 
 extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
+    if (g_ov && g_ov->script && !g_ov->script_done) {
+        ImGuiContext* p = ImGui::GetCurrentContext();
+        ImGui::SetCurrentContext(g_ov->ctx);
+        if (g_ov->script->active()) {
+            g_ov->script->step(*g_ov->app, *g_ov->script_plat);
+        } else {
+            g_ov->script_done = true;
+            std::fprintf(stderr, "[r4l-script] overlay script done, failures=%d\n", g_ov->script->failures());
+        }
+        ImGui::SetCurrentContext(p);
+    }
     if (!g_ov || !g_ov->open.load()) return;
     Overlay& o = *g_ov;
     ImGuiContext* prev = ImGui::GetCurrentContext();
@@ -297,6 +327,17 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
     o.last_ns = now;
     io.DisplaySize = ImVec2(static_cast<float>(fb_w), static_cast<float>(fb_h));
     io.DisplayFramebufferScale = ImVec2(1, 1);
+    if (o.script && o.window) {
+        // The runtime hands mouse events over in pixels; the script pushes
+        // window points, so scale its coordinates down by the density.
+        int win_w = 0, win_h = 0;
+        SDL_GetWindowSize(o.window, &win_w, &win_h);
+        if (win_w > 0) o.script->coord_scale = static_cast<float>(win_w) / static_cast<float>(fb_w);
+    }
+    if (o.script) {
+        script_frame_begin();
+        ImGui::GetCurrentContext()->TestEngineHookItems = true;
+    }
     ImGui::NewFrame();
     o.app->frame();
     ImGui::Render();

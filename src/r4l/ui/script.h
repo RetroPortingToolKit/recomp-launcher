@@ -29,6 +29,7 @@ public:
     // Run actions until a wait; returns true when the script asked to stop.
     void step(App& app, Platform& plat);
     int failures() const { return failures_; }
+    float coord_scale = 1.0f;  // pushed mouse coordinates = layout coordinates * this
 
 private:
     std::vector<std::string> lines_;
