@@ -369,8 +369,13 @@ void App::draw_netplay() {
             if (!np->list_get(c, i, &l)) continue;
             ImGui::PushID(i);
             char row[200];
-            std::snprintf(row, sizeof(row), "%s   %d/%d   %s%d ms", l.name, l.player_count, l.max_slots,
-                          l.has_password ? "locked  " : "", l.latency_ms);
+            // "~" marks a through-the-server estimate, not a timed direct link.
+            if (l.latency_ms < 0)
+                std::snprintf(row, sizeof(row), "%s   %d/%d   %s", l.name, l.player_count, l.max_slots,
+                              l.has_password ? "locked" : "");
+            else
+                std::snprintf(row, sizeof(row), "%s   %d/%d   %s%s%d ms", l.name, l.player_count, l.max_slots,
+                              l.has_password ? "locked  " : "", l.latency_is_estimate ? "~" : "", l.latency_ms);
             const bool picked = ImGui::Selectable(row, false, 0, ImVec2(0, theme().row_h));
             script_mark((std::string("lobby:") + l.name).c_str());
             if (picked && np->join) {

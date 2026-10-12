@@ -224,6 +224,11 @@ void netplay_draw_lobby_extras(App& a, bool host) {
             int v = np->relay_host_get(c);
             if (row_toggle(tr("Host through relay"), &v)) np->relay_host_set(c, v);
         }
+        if (np->relay_via_ice_get && np->relay_via_ice_set) {
+            // Host relay over ICE: guests reach the host without a forwarded port.
+            int v = np->relay_via_ice_get(c);
+            if (row_toggle(tr("Relay over ICE (no port forwarding)"), &v)) caps_changed |= np->relay_via_ice_set(c, v) >= 0;
+        }
         ImGui::EndDisabled();
         char st[160] = {0};
         if (np->relay_status && np->relay_status(c, st, sizeof st) && st[0]) ImGui::TextDisabled("%s", st);
