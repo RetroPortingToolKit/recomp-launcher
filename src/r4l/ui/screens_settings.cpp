@@ -246,10 +246,17 @@ void App::draw_graphics() {
         unlock();
     }
     if (S("graphics.texture_filter") && g->has_texture_filter) {
-        static const char* kTf[] = {"Nearest (original)", "Bilinear"};
-        const char* l[2] = {tr(kTf[0]), tr(kTf[1])};
+        // Values are the host's [video] texture_filtering enum (psxrecomp
+        // PSX_TEXTURE_FILTER_*): 0 nearest, 1 bilinear, 3 xBR (OpenGL only).
+        // 2 (stable world) is set by mods, never offered here.
+        static const char* kTf[] = {"Nearest (original)", "Bilinear", "xBR (OpenGL)"};
+        static const int kTfValue[] = {0, 1, 3};
+        const char* l[3] = {tr(kTf[0]), tr(kTf[1]), tr(kTf[2])};
+        int idx = 0;
+        for (int i = 0; i < 3; ++i)
+            if (io->texture_filter == kTfValue[i]) idx = i;
         lock("graphics.texture_filter");
-        row_combo(tr("Texture filtering"), &io->texture_filter, l, 2);
+        if (row_combo(tr("Texture filtering"), &idx, l, 3)) io->texture_filter = kTfValue[idx];
         unlock();
     }
     if (S("graphics.fmv_filter") && g->has_fmv_filter) {
