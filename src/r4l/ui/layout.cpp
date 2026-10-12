@@ -124,7 +124,7 @@ void App::frame() {
     else navv.push_back(Screen::Home);
     if (setup_only) {
         // The game starts as soon as the disc checks out.
-        if (s.media_ready() && !s.needs_setup() && !job.running) request_launch();
+        if (s.media_ready() && !job.running) request_launch();
     } else if (surf.any_shown("graphics.")) navv.push_back(Screen::Graphics);
     if (!setup_only && surf.any_shown("controls.")) navv.push_back(Screen::Controls);
     if (!setup_only && surf.any_shown("mods.") && mods.available()) navv.push_back(Screen::Mods);

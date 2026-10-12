@@ -74,7 +74,7 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
             }
             if (np->clear_launch_pending) np->clear_launch_pending(np->ctx);
         }
-        if (app.s.outcome == Outcome::None && app.s.media_ready() && !app.s.needs_setup()) app.request_launch();
+        if (app.s.outcome == Outcome::None && app.s.media_ready()) app.request_launch();
         if (app.s.outcome == Outcome::Launch) {
             app.job.join();
             write_rom();
