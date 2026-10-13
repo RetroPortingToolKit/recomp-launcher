@@ -5,8 +5,9 @@
 // ImGui context on that GL context and draws after the game frame on the
 // thread that presents (docs/DESIGN.md, "In-game overlay").
 //
-// psxrecomp does not call this yet: the hooks it needs are listed in
-// docs/DESIGN.md as small psxrecomp PR proposals (P1-P6).
+// psxrecomp reaches it through its provider-neutral in-game menu contract
+// (psx_menu_host.h): src/r4l/psx_menu_provider.cpp adapts this overlay to
+// PsxMenuProvider, and a title opts in with psx_menu_set_provider().
 #ifndef RECOMP_LAUNCHER_OVERLAY_H
 #define RECOMP_LAUNCHER_OVERLAY_H
 
@@ -16,7 +17,7 @@
 extern "C" {
 #endif
 
-#define RECOMP_OVERLAY_ABI_VERSION 1
+#define RECOMP_OVERLAY_ABI_VERSION 2  /* 2: disc_* (the runtime tray policy) */
 
 /* Bits returned by apply_settings: which edits only take effect after a
  * restart (the overlay labels those rows). */
@@ -47,6 +48,13 @@ typedef struct RecompOverlayHost {
      * e.g. to start a match the in-game lobby set up); 2 relaunch this
      * process with the same arguments (restart-only settings). */
     void (*request_exit)(void* ctx, int how);
+    /* v2: multi-disc swap through the runtime's tray policy (lid cycle,
+     * netplay refusal, persistence). count is 0 for single-disc titles or
+     * runtimes without the policy; insert returns 0 on success. */
+    int  (*disc_count)(void* ctx);
+    int  (*disc_mounted)(void* ctx);              /* 1-based, 0 = none */
+    const char* (*disc_path)(void* ctx, int disc_1based);
+    int  (*disc_insert)(void* ctx, int disc_1based);
 } RecompOverlayHost;
 
 /* Call once on the GL thread with the runtime's window and current context. */

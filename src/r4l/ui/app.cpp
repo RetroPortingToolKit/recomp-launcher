@@ -2,6 +2,7 @@
 #include "skin.h"
 #include "ui.h"
 #include "script.h"
+#include "recomp_launcher_overlay.h"
 #include "dialogs.h"
 
 #include <dirent.h>
@@ -679,6 +680,29 @@ void App::draw_setup() {
     ImGui::TextWrapped("Point the game at your own copy of %s (%s). Nothing is downloaded; the disc stays "
                        "where it is.", title->display_name, title->serial);
     ImGui::PopStyleColor();
+
+    // In-game, multi-disc: swap the disc in the drive through the runtime's
+    // tray policy (the same one the runtime's own disc menu and hotkeys use).
+    if (mode == Mode::Overlay && host && host->abi_version >= 2 && host->disc_count &&
+        host->disc_count(host->ctx) > 1) {
+        section(tr("Disc in the drive"));
+        const int n = host->disc_count(host->ctx);
+        const int mounted = host->disc_mounted ? host->disc_mounted(host->ctx) : 0;
+        for (int d = 1; d <= n; ++d) {
+            ImGui::PushID(d);
+            char label[64];
+            std::snprintf(label, sizeof label, "%s %d%s", tr("Disc"), d, d == mounted ? tr(" (in the drive)") : "");
+            if (big_button(label, ImVec2(260, 44), d == mounted) && host->disc_insert) {
+                const int rc = host->disc_insert(host->ctx, d);
+                s.status = rc == 0 ? std::string(tr("Disc changed.")) : std::string(tr("The disc could not be changed now."));
+                if (rc == 0) overlay_open = false;  // back to the game for the lid cycle
+            }
+            char mark[32];
+            std::snprintf(mark, sizeof mark, "disc:%d", d);
+            script_mark(mark);
+            ImGui::PopID();
+        }
+    }
 
     section("1  Disc image");
     for (size_t i = 0; i < s.discs.size(); ++i) {
