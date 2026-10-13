@@ -354,6 +354,13 @@ void App::draw_mods() {
         ImGui::TextDisabled("%s", tr("This build has no mod support."));
         return;
     }
+    // Mods change the game, so a savestate made with other mods may not work.
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextColored(theme().warn, "%s",
+                       tr("Changing mods will probably break your existing save states. Don't change mods if you "
+                          "want to keep using previous save states."));
+    ImGui::PopTextWrapPos();
+    script_mark("mods:savestate_warning");
     // Toolbar: search, install, packages view, disable all.
     ImGui::SetNextItemWidth(240);
     ImGui::InputTextWithHint("##search", tr("Search mods"), mods_search, sizeof mods_search);

@@ -516,42 +516,6 @@ bool App::handle_event(const SDL_Event& e) {
            e.type == SDL_EVENT_GAMEPAD_BUTTON_UP;
 }
 
-void App::bind_mods_warning() {
-    mods.confirm_change = [this](std::function<void()> apply) {
-        if (mods_warned) return true;
-        mods_pending = std::move(apply);
-        mods_warn_open = true;
-        return false;
-    };
-}
-
-void App::draw_mods_warning() {
-    if (mode != Mode::Overlay) return;
-    if (mods_warn_open && !ImGui::IsPopupOpen("Change mods?")) ImGui::OpenPopup("Change mods?");
-    if (!ImGui::BeginPopupModal("Change mods?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
-    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
-    ImGui::TextUnformatted(tr("Some mods change how the game runs. Savestates made with a different set of mods "
-                              "may not load correctly, and loading them can cause glitches or crashes."));
-    ImGui::TextUnformatted(tr("Your saves on the memory card are not affected."));
-    ImGui::PopTextWrapPos();
-    if (big_button(tr("Change mods"), ImVec2(200, 44), true)) {
-        mods_warned = true;
-        mods_warn_open = false;
-        ImGui::CloseCurrentPopup();
-        if (auto apply = std::move(mods_pending)) apply();
-        mods_pending = nullptr;
-    }
-    script_mark("modwarn:continue");
-    ImGui::SameLine();
-    if (big_button(tr("Cancel"), ImVec2(140, 44), false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-        mods_warn_open = false;
-        mods_pending = nullptr;
-        ImGui::CloseCurrentPopup();
-    }
-    script_mark("modwarn:cancel");
-    ImGui::EndPopup();
-}
-
 void App::draw_capture_modal() {
     if (capture.kind != Capture::None && !ImGui::IsPopupOpen("Rebind")) ImGui::OpenPopup("Rebind");
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));

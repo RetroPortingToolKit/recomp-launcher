@@ -173,7 +173,7 @@ void App::frame() {
             request_launch();
         }
         if (overlay && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) &&
-            !ImGui::IsAnyItemActive() && !mods_warn_open) {
+            !ImGui::IsAnyItemActive()) {
             sk.play("back");
             overlay_open = false;
         }
@@ -375,7 +375,6 @@ void App::frame() {
     ImGui::PopStyleColor();
 
     draw_capture_modal();
-    draw_mods_warning();
     ImGui::End();
 }
 

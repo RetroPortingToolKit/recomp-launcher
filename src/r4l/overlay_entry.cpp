@@ -165,7 +165,6 @@ void apply_transitions(Overlay& o) {
         if (a.s.io) a.opened = a.applied = *a.s.io;
         o.disc_at_open = a.s.primary_disc();
         a.exit_requested = false;
-        a.mods_warned = false;  // ask again each time the menu opens
         skin().play("confirm");
     }
     if (o.closing.exchange(false) || !a.overlay_open) {
@@ -225,7 +224,6 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
             if (!now) a.mods_restart = true;  // saved; applies on the next start
             return now;
         };
-    a.bind_mods_warning();
     if (const char* sp = std::getenv("R4L_OVERLAY_SCRIPT")) {
         g_ov->script = std::make_unique<Script>();
         if (g_ov->script->load(sp)) {
