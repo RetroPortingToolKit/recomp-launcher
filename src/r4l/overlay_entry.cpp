@@ -54,6 +54,7 @@ struct Overlay {
     uint64_t last_ns = 0;
 };
 Overlay* g_ov = nullptr;
+std::unique_ptr<Script> g_carry_script;  // R4L_OVERLAY_SCRIPT across a provider detach/attach (tests)
 
 ImGuiKey imgui_key(SDL_Scancode sc) {
     switch (sc) {
@@ -224,7 +225,11 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
             if (!now) a.mods_restart = true;  // saved; applies on the next start
             return now;
         };
-    if (const char* sp = std::getenv("R4L_OVERLAY_SCRIPT")) {
+    if (g_carry_script) {  // a session ended mid-script: continue on the new window
+        g_ov->script = std::move(g_carry_script);
+        g_ov->script_plat = new Platform();
+        g_ov->script_plat->window = g_ov->window;
+    } else if (const char* sp = std::getenv("R4L_OVERLAY_SCRIPT")) {
         g_ov->script = std::make_unique<Script>();
         if (g_ov->script->load(sp)) {
             g_ov->script_plat = new Platform();  // never closed: the window is the host's
@@ -356,6 +361,7 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
 
 extern "C" void recomp_overlay_shutdown(void) {
     if (!g_ov) return;
+    if (g_ov->script && !g_ov->script_done) g_carry_script = std::move(g_ov->script);
     ImGuiContext* prev = ImGui::GetCurrentContext();
     ImGui::SetCurrentContext(g_ov->ctx);
     if (g_ov->gl_ready) {
