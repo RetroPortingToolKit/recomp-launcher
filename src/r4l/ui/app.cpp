@@ -39,6 +39,8 @@ const char* screen_name(Screen s) {
     case Screen::Setup: return "Disc setup";
     case Screen::About: return "About";
     case Screen::System: return "Settings";
+    case Screen::Resume: return "Resume";
+    case Screen::QuitGame: return "Quit game";
     default: return "";
     }
 }
