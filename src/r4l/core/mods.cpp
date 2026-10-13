@@ -97,6 +97,7 @@ ModFeature* ModCatalog::find(const char* package_id, const char* feature_id) {
 }
 
 bool ModCatalog::set_enabled(ModFeature& f, bool on) {
+    if (confirm_change && !confirm_change([this, &f, on] { set_enabled(f, on); })) return false;
     // In-game (live set): the host records and saves the change on its own
     // thread; this side only mirrors it. In the launcher, the provider does.
     if (!live) {
@@ -111,6 +112,7 @@ bool ModCatalog::set_enabled(ModFeature& f, bool on) {
 }
 
 bool ModCatalog::set_option(ModFeature& f, const ModOption& o, const std::string& value) {
+    if (confirm_change && !confirm_change([this, &f, &o, value] { set_option(f, o, value); })) return false;
     if (!live) {
         if (!p_ || !p_->feature_set_option) return false;
         if (!p_->feature_set_option(p_->ctx, f.info.package_id, f.info.id, o.info.id, value.c_str()))
@@ -244,9 +246,12 @@ bool ModCatalog::set_resource(ModFeature& f, const RecompLauncherCModResource& r
 }
 
 int ModCatalog::disable_all() {
+    if (confirm_change && !confirm_change([this] { disable_all(); })) return 0;
+    auto held = std::move(confirm_change);  // one confirmation covers the batch
     int n = 0;
     for (auto& f : features)
         if (f.info.enabled && set_enabled(f, false)) ++n;
+    confirm_change = std::move(held);
     return n;
 }
 

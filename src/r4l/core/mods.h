@@ -74,6 +74,9 @@ public:
     // edit; returns 1 if live, 0 if it waits for a restart (needs_restart).
     std::function<int(const char* pkg, const char* feature, const char* option, const char* value)> live;
     std::set<std::string> needs_restart;  // "pkg/feature"
+    // In-game: asked before a change. Returns true to go ahead now; false
+    // holds the change, and `apply` runs it if the player confirms later.
+    std::function<bool(std::function<void()> apply)> confirm_change;
 
 private:
     const RecompLauncherCModProvider* p_ = nullptr;

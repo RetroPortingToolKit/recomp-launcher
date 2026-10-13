@@ -8,6 +8,7 @@
 #include "imgui.h"
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -81,6 +82,9 @@ struct App {
     bool setup_only = false;                   // in-game first run: disc setup, then play
     bool mods_restart = false;                 // overlay: a mod change waits for a restart
     bool exit_requested = false;               // overlay: request_exit already sent
+    bool mods_warned = false;                  // overlay: savestate warning accepted this time the menu is open
+    bool mods_warn_open = false;               // overlay: show the savestate warning
+    std::function<void()> mods_pending;        // the mod change waiting for that answer
     Screen last_focus_screen = Screen::Count;
     int last_nav_hover = -1;
     std::string skin_dir;
@@ -155,6 +159,8 @@ struct App {
     void restore_defaults();
     void draw_footer();
     void draw_capture_modal();
+    void draw_mods_warning();              // overlay: savestates vs mod changes
+    void bind_mods_warning();              // overlay: ask before the first mod change
     void overlay_tick();                   // live-apply + resume handling
     bool restart_needed(size_t offset, size_t size) const;
     void restart_chip(size_t offset, size_t size);

@@ -1,4 +1,5 @@
 // test_core.cpp — settings/config round-trips and the preset tracker.
+#include <functional>
 #include "r4l/core/binds.h"
 #include "r4l/core/ini.h"
 #include "r4l/core/mods.h"
@@ -272,6 +273,45 @@ static void test_mod_archive(const std::string& dir) {
     CHECK(!zip_has_manifest(dir + "/bad.psxmod", &err) && err == "The archive has no manifest.toml");
 }
 
+// In-game: the first mod change waits for the savestate warning; confirming
+// applies the held change, and "Turn all off" asks once for the batch.
+static void test_mod_change_confirmation() {
+    r4l::ModCatalog m;
+    int live_calls = 0;
+    m.live = [&](const char*, const char*, const char*, const char*) { ++live_calls; return 0; };
+    for (int i = 0; i < 2; ++i) {
+        r4l::ModFeature f;
+        std::snprintf(f.info.package_id, sizeof f.info.package_id, "pkg");
+        std::snprintf(f.info.id, sizeof f.info.id, "f%d", i);
+        f.info.enabled = 1;
+        m.features.push_back(f);
+    }
+    bool warned = false;
+    int asked = 0;
+    std::function<void()> held;
+    m.confirm_change = [&](std::function<void()> apply) {
+        ++asked;
+        if (warned) return true;
+        held = std::move(apply);
+        return false;
+    };
+    CHECK(!m.set_enabled(m.features[0], false));  // held for the warning
+    CHECK(m.features[0].info.enabled == 1 && live_calls == 0 && held);
+    warned = true;  // the player chose "Change mods"
+    held();
+    CHECK(m.features[0].info.enabled == 0 && live_calls == 1);
+    // Cancel: nothing changes.
+    warned = false;
+    held = nullptr;
+    asked = 0;
+    CHECK(m.disable_all() == 0);
+    CHECK(m.features[1].info.enabled == 1 && asked == 1 && held);
+    warned = true;
+    asked = 0;
+    held();
+    CHECK(m.features[1].info.enabled == 0 && asked == 1);  // one question for the whole batch
+}
+
 static void test_surface() {
     // Default rule: essentials shown, advanced hidden.
     Surface none;
@@ -370,6 +410,7 @@ int main(int argc, char** argv) {
     test_quality();
     test_handoff(dir);
     test_mod_archive(dir);
+    test_mod_change_confirmation();
     test_surface();
     test_discscan(dir);
     test_tim_and_font(dir);
