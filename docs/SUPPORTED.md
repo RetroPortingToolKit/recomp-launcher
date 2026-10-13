@@ -111,6 +111,7 @@ below is generated from the catalog (`tools/gen_supported.py`, checked by ctest)
 | `controls.hotkeys` | Controls | Host shortcut keys (config.ini) | Hidden | - |
 | `controls.assist` | Controls | Rewind / save-state / fast-forward buttons | Shown | - |
 | `controls.mouse` | Controls | Mouse controls | Hidden | `mouse_enabled` |
+| `controls.force_feedback` | Controls | Wheel force feedback (JogCon, experimental) | Hidden | `jogcon_force_feedback` |
 | `mods.list` | Mods | Mod features and options | Shown | - |
 | `mods.install` | Mods | Install / remove mods | Shown | - |
 | `mods.versions` | Mods | Mod version selection | Hidden | - |

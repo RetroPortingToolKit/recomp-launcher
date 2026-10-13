@@ -75,6 +75,7 @@ const std::vector<Capability>& capabilities() {
         {"controls.hotkeys", false, "Controls", "Host shortcut keys (config.ini)", -1},
         {"controls.assist", true, "Controls", "Rewind / save-state / fast-forward buttons", -1},
         {"controls.mouse", false, "Controls", "Mouse controls", S_OFF(mouse_enabled)},
+        {"controls.force_feedback", false, "Controls", "Wheel force feedback (JogCon, experimental)", S_OFF(jogcon_force_feedback)},
         // ---- Mods
         {"mods.list", true, "Mods", "Mod features and options", -1},
         {"mods.install", true, "Mods", "Install / remove mods", -1},

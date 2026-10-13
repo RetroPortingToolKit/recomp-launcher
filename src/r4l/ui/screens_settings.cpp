@@ -733,6 +733,14 @@ void App::draw_controls() {
         section(tr("Mouse"));
         row_toggle(tr("Mouse controls"), &io->mouse_enabled);
     }
+    if (S("controls.force_feedback")) {
+        section(tr("Force feedback"));
+        ImGui::BeginDisabled(L("controls.force_feedback"));
+        row_toggle(tr("Wheel force feedback (experimental)"), &io->jogcon_force_feedback,
+                   tr("For force-feedback steering wheels used as a JogCon. "
+                      "Gamepads are never affected. Off by default."));
+        ImGui::EndDisabled();
+    }
 
     if (S("controls.bindings") && !g->hide_rebind) {
         section(tr("Bindings"));

@@ -39,6 +39,8 @@ extern "C" {
 #define RECOMP_LAUNCHER_HAS_MULTITAP_ENABLED 1
 /* Host may #ifdef this when reading multitap_analog (DualShock-on-tap hack). */
 #define RECOMP_LAUNCHER_HAS_MULTITAP_ANALOG 1
+/* Host may #ifdef this when reading Settings.jogcon_force_feedback. */
+#define RECOMP_LAUNCHER_HAS_JOGCON_FORCE_FEEDBACK 1
 /* Host may #ifdef this when reading Settings.rewind_depth. */
 #define RECOMP_LAUNCHER_HAS_REWIND_DEPTH 1
 /* Host may #ifdef this when reading Settings.rewind_interval. */
@@ -1570,6 +1572,11 @@ struct RecompLauncherCSettings {
      * additively; a zero-initialized host reads as unset. */
     int  quality_preset;
     int  quality_base;
+    /* EXPERIMENTAL wheel force feedback: a JogCon-presenting port drives a
+     * host force-feedback wheel's haptics (psxrecomp settings.toml
+     * [controller] jogcon_force_feedback). Player setting, default off.
+     * Appended additively; a zero-initialized host reads as off. */
+    int  jogcon_force_feedback;
 };
 #define RECOMP_LAUNCHER_HAS_ZAPPER_SETTINGS 1
 
