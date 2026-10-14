@@ -122,7 +122,9 @@ const SurfaceRule* Surface::find(const std::string& key) const {
 }
 
 Vis Surface::vis(const std::string& key) const {
-    if (show_all_) return Vis::Shown;
+    // R4L_SURFACE=all reveals every row; it does not change how the
+    // launcher itself runs (launcher.* are modes, not rows).
+    if (show_all_ && key.compare(0, 9, "launcher.") != 0) return Vis::Shown;
     if (const SurfaceRule* r = find(key))
         if (r->vis != Vis::Default) return r->vis;
     const Capability* c = find_capability(key);
