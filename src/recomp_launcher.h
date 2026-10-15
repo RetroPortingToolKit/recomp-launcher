@@ -2369,7 +2369,24 @@ typedef struct RecompLauncherCGameInfo {
     const char*        quality_reason;
     void (*quality_apply)(int preset, RecompLauncherCSettings* s);
     int  (*quality_redetect)(void);
+
+    /* ---- Texture filtering vocabulary (Settings.texture_filter) ------------
+     * The host's own values for the texture-filtering row, e.g. a PSX runtime
+     * offering {"Nearest","Bilinear","xBR"} = {0,1,3}. When
+     * num_texture_filters > 0 and both arrays are set, the row cycles these
+     * labels storing the parallel value, and a Settings value the host passes
+     * in that is one of them is kept as is (startup and soft return alike);
+     * anything else becomes values[0]. Otherwise the row stays the legacy
+     * Nearest/Bilinear toggle (0/1). Borrowed for the launcher's lifetime.
+     * In-game menu providers read the same catalog, so every frontend offers
+     * and preserves the same values. Appended for ABI stability. */
+    const char* const* texture_filter_labels;
+    const int*         texture_filter_values;
+    int                num_texture_filters;
 } RecompLauncherCGameInfo;
+
+/* RecompLauncherCGameInfo carries texture_filter_labels / _values. */
+#define RECOMP_LAUNCHER_HAS_TEXTURE_FILTER_CATALOG 1
 #define RECOMP_LAUNCHER_HAS_NETPLAY_VIEW 1
 #define RECOMP_LAUNCHER_HAS_ROM_PATTERNS 1
 /* Hosts #ifdef on this to stay source-compatible with older recomp-ui that
