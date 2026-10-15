@@ -26,6 +26,9 @@ namespace {
 std::map<ImGuiID, ImRect> g_bb;
 std::map<std::string, ImRect> g_items, g_prev;
 std::string g_scroll_to;  // `tap`/`find`: bring this item into view while it is drawn
+// Wheel over the middle of the screen: a fixed y can land on the footer of a
+// small window (the PC's hidden window is 480 tall).
+std::string mid_y() { return std::to_string(static_cast<int>(ImGui::GetIO().DisplaySize.y * 0.5f)); }
 void scroll_into_view(const std::string& l, const ImRect& bb) {
     if (g_scroll_to.empty() || l != g_scroll_to) return;
     ImGuiContext& g = *ImGui::GetCurrentContext();
@@ -188,13 +191,13 @@ void Script::step(App& app, Platform& plat) {
                 if (scrolls_ == 0 && it == g_prev.end()) {  // unknown position: start from the top
                     ++scrolls_;
                     lines_.insert(lines_.begin() + static_cast<long>(pc_),
-                                  {"wheel 300 420 60", "wheel " + std::to_string(content_x_) + " 420 60", "wait 2", "tap " + rest});
+                                  {"wheel 300 " + mid_y() + " 60", "wheel " + std::to_string(content_x_) + " " + mid_y() + " 60", "wait 2", "tap " + rest});
                     continue;
                 }
                 if (scrolls_++ < 16) {
                     // Alternate between the left and right halves of the content (two-pane pages).
                     const int x = (scrolls_ & 1) ? 300 : content_x_;
-                    lines_.insert(lines_.begin() + static_cast<long>(pc_), {"wheel " + std::to_string(x) + " 420 " + (up ? "3" : "-3"),
+                    lines_.insert(lines_.begin() + static_cast<long>(pc_), {"wheel " + std::to_string(x) + " " + mid_y() + " " + (up ? "3" : "-3"),
                                                                             "wait 2", "tap " + rest});
                     continue;
                 }
@@ -230,21 +233,27 @@ void Script::step(App& app, Platform& plat) {
             std::fprintf(stderr, "[r4l-script] %s file %s contains \"%s\"\n", ok ? "PASS" : "FAIL", path.c_str(), want.c_str());
             if (!ok) ++failures_;
         } else if (op == "top") {  // scroll the content pane back to the top
-            for (int i = 0; i < 3; ++i) lines_.insert(lines_.begin() + static_cast<long>(pc_), "wheel " + std::to_string(content_x_) + " 420 40");
+            for (int i = 0; i < 3; ++i) lines_.insert(lines_.begin() + static_cast<long>(pc_), "wheel " + std::to_string(content_x_) + " " + mid_y() + " 40");
         } else if (op == "find") {  // scroll until an item with this label is on screen
             auto it = g_prev.find(rest);
             const float vh = ImGui::GetIO().DisplaySize.y;
             if (it == g_prev.end() || it->second.Min.y < 0 || it->second.Max.y > vh * 0.86f) {
-                if (scrolls_ == 0 && (it == g_prev.end() || it->second.Min.y < 0)) {
+                if (it != g_prev.end() && scrolls_ == 0) {  // drawn but off screen: scroll its window to it
+                    ++scrolls_;
+                    g_scroll_to = rest;
+                    lines_.insert(lines_.begin() + static_cast<long>(pc_), {"wait 3", "find " + rest});
+                    continue;
+                }
+                if (scrolls_ <= 1 && it == g_prev.end()) {
                     ++scrolls_;
                     lines_.insert(lines_.begin() + static_cast<long>(pc_),
-                                  {"wheel 300 420 60", "wheel " + std::to_string(content_x_) + " 420 60", "wait 2", "find " + rest});
+                                  {"wheel 300 " + mid_y() + " 60", "wheel " + std::to_string(content_x_) + " " + mid_y() + " 60", "wait 2", "find " + rest});
                     continue;
                 }
                 if (scrolls_++ < 16) {
                     const int x = (scrolls_ & 1) ? 300 : content_x_;
                     lines_.insert(lines_.begin() + static_cast<long>(pc_),
-                                  {"wheel " + std::to_string(x) + " 420 -3", "wait 2", "find " + rest});
+                                  {"wheel " + std::to_string(x) + " " + mid_y() + " -3", "wait 2", "find " + rest});
                     continue;
                 }
             }
