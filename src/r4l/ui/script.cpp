@@ -249,7 +249,8 @@ void Script::step(App& app, Platform& plat) {
                 }
             }
             scrolls_ = 0;
-            const bool ok = it != g_prev.end();
+            // Found means reachable: drawn and scrolled on screen, not merely drawn.
+            const bool ok = it != g_prev.end() && it->second.Min.y >= 0 && it->second.Max.y <= vh * 0.86f;
             std::fprintf(stderr, "[r4l-script] %s find \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
             if (!ok) ++failures_;
         } else if (op == "seen") {  // an item with this label was drawn last frame

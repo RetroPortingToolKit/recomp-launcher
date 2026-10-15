@@ -46,4 +46,10 @@ if(Python3_FOUND)
     add_test(NAME r4l_render_all COMMAND r4l-skin-render --shots ${CMAKE_CURRENT_BINARY_DIR}/test-shots
              --assets ${CMAKE_CURRENT_SOURCE_DIR}/assets --skin default --size 1280x800)
     set_tests_properties(r4l_render_all PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_SURFACE=all")
+    # Stacked presets (r4 skin) must not pin the rows below them off screen.
+    add_test(NAME r4l_graphics_reach COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_graphics_reach PROPERTIES
+        ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=Graphics;R4L_SIZE=1280x720;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/graphics_reach.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\\[r4l-script\\] FAIL")
 endif()

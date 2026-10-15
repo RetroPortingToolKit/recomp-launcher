@@ -89,7 +89,10 @@ void App::draw_graphics() {
             bw = sk.metric("preset_box_w", 384);
             vh = sk.metric("preset_box_h", 42);
             vpitch = sk.metric("preset_pitch", 60);
-            vy = sk.metric("preset_top", 147);
+            // preset_top is a viewport position on an unscrolled page; follow
+            // the page's scroll so the column and every row after it scroll
+            // with it (an absolute column pins the rows below it off screen).
+            vy = sk.metric("preset_top", 147) - ImGui::GetScrollY();
             vx = (ImGui::GetMainViewport()->WorkSize.x - bw) * 0.5f;
         }
         int pushed = 0;

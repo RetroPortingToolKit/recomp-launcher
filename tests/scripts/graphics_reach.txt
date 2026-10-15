@@ -1,0 +1,12 @@
+# Every Graphics row is reachable under a stacked-preset skin (r4):
+# the mouse path scrolls to the last rows and taps them.
+screen Graphics
+wait 4
+seen Ultra
+find Texture filtering
+tap Texture filtering
+wait 3
+top
+wait 3
+find Ultra
+quit
