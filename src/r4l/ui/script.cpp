@@ -253,6 +253,12 @@ void Script::step(App& app, Platform& plat) {
             const bool ok = it != g_prev.end() && it->second.Min.y >= 0 && it->second.Max.y <= vh * 0.86f;
             std::fprintf(stderr, "[r4l-script] %s find \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
             if (!ok) ++failures_;
+        } else if (op == "visible") {  // on screen now, without scrolling (keyboard/gamepad nav checks)
+            auto it = g_prev.find(rest);
+            const float vh = ImGui::GetIO().DisplaySize.y;
+            const bool ok = it != g_prev.end() && it->second.Min.y >= 0 && it->second.Max.y <= vh * 0.86f;
+            std::fprintf(stderr, "[r4l-script] %s visible \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
+            if (!ok) ++failures_;
         } else if (op == "seen") {  // an item with this label was drawn last frame
             const bool ok = g_prev.count(rest) != 0;
             if (!ok && std::getenv("R4L_SCRIPT_DEBUG")) for (auto& kv : g_prev) std::fprintf(stderr, "  item: %s\n", kv.first.c_str());
