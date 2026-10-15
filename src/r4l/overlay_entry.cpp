@@ -311,7 +311,7 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
             g_ov->script->step(*g_ov->app, *g_ov->script_plat);
         } else {
             g_ov->script_done = true;
-            std::fprintf(stderr, "[r4l-script] overlay script done, failures=%d\n", g_ov->script->failures());
+            { std::fprintf(stderr, "[r4l-script] overlay script done, failures=%d\n", g_ov->script->failures()); std::fflush(stderr); }
         }
         ImGui::SetCurrentContext(p);
     }

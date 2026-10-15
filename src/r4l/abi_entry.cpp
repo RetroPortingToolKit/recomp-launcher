@@ -124,7 +124,7 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
             app.request_quit();
         }
     }
-    if (scripted) std::fprintf(stderr, "[r4l-script] launcher script done, failures=%d\n", script.failures());
+    if (scripted) { std::fprintf(stderr, "[r4l-script] launcher script done, failures=%d\n", script.failures()); std::fflush(stderr); }
     if (!hidden) {
         int cw = 0, ch = 0;
         SDL_GetWindowSize(plat.window, &cw, &ch);
