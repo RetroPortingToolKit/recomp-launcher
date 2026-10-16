@@ -58,7 +58,7 @@ void QualityTracker::learn(int preset) {
 void QualityTracker::select(int preset, RecompLauncherCSettings* s) {
     if (!offered() || !preset_offered(preset) || !s) return;
     learn(preset);
-    apply_(preset, s);  // last call: host globals end on the chosen preset
+    apply_(preset, s);  // the host maps the preset to rows (pure: safe in-game)
     s->quality_preset = preset;
     s->quality_base = preset;
     snapshot_.assign(reinterpret_cast<const uint8_t*>(s),

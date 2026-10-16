@@ -28,7 +28,8 @@ const char* quality_name(int preset);
 
 class QualityTracker {
 public:
-    // Host hooks; null apply means presets are not offered.
+    // Host hooks; null apply means presets are not offered. apply must be a
+    // pure preset -> rows mapping: the in-game menu calls it while drawing.
     using ApplyFn = void (*)(int preset, RecompLauncherCSettings* s);
 
     void bind(ApplyFn apply, int offered_mask);
