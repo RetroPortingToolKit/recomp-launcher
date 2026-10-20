@@ -34,6 +34,7 @@ set(R4L_SOURCES
     ${R4L_ROOT}/src/r4l/boot_timing.c
     ${R4L_ROOT}/src/r4l/overlay_entry.cpp
     ${R4L_ROOT}/src/r4l/psx_menu_provider.cpp
+    ${R4L_ROOT}/src/common/recomp_runtime_ui.c  # recomp-ui 6771ea0: psxrecomp psx_runtime_menu.c fallback
     ${R4L_ROOT}/src/r4l/core/binds.cpp
     ${R4L_ROOT}/src/r4l/core/discfs.cpp
     ${R4L_ROOT}/src/r4l/core/discscan.cpp
