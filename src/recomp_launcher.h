@@ -41,6 +41,8 @@ extern "C" {
 #define RECOMP_LAUNCHER_HAS_MULTITAP_ANALOG 1
 /* Host may #ifdef this when reading Settings.jogcon_force_feedback. */
 #define RECOMP_LAUNCHER_HAS_JOGCON_FORCE_FEEDBACK 1
+/* Settings.supersample_milli and GameInfo.has_supersample exist. */
+#define RECOMP_LAUNCHER_HAS_SUPERSAMPLE 1
 /* Host may #ifdef this when reading Settings.rewind_depth. */
 #define RECOMP_LAUNCHER_HAS_REWIND_DEPTH 1
 /* Host may #ifdef this when reading Settings.rewind_interval. */
@@ -1577,6 +1579,10 @@ struct RecompLauncherCSettings {
      * [controller] jogcon_force_feedback). Player setting, default off.
      * Appended additively; a zero-initialized host reads as off. */
     int  jogcon_force_feedback;
+    /* Supersampling on top of the internal resolution, in thousandths
+     * (1000 = off, 1250, 1500, 2000), shown when GameInfo.has_supersample.
+     * 0 = unset (the host's default). Appended additively. */
+    int  supersample_milli;
 };
 #define RECOMP_LAUNCHER_HAS_ZAPPER_SETTINGS 1
 
@@ -2309,6 +2315,9 @@ typedef struct RecompLauncherCGameInfo {
     int                num_internal_resolutions;
     const char*        internal_resolution_note;
     int                has_dynamic_resolution;
+    /* Nonzero: the host offers Settings.supersample_milli (a Supersampling
+     * row under Internal resolution). Appended for ABI stability. */
+    int                has_supersample;
     /* Nonzero: the host offers Settings.render_thread / present_thread /
      * frame_generation (Display rows, OpenGL only); shown as "Smooth motion". Appended for ABI
      * stability. */
