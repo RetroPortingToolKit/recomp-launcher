@@ -221,6 +221,19 @@ void App::draw_graphics() {
             io->internal_resolution = g->internal_resolution_values[idx];
         unlock();
         restart_chip(offsetof(RecompLauncherCSettings, internal_resolution), sizeof(int));
+        if (g->has_supersample) {
+            static const char* const kSsLabels[] = {"Off", "1.25x", "1.5x", "2x"};
+            static const int kSsMilli[] = {1000, 1250, 1500, 2000};
+            int ss = 0;
+            for (int i = 0; i < 4; ++i)
+                if (kSsMilli[i] == io->supersample_milli) ss = i;
+            lock("graphics.supersampling");
+            if (row_combo(tr("Supersampling"), &ss, kSsLabels, 4,
+                          tr("Renders above the internal resolution and scales down for smoother edges.")))
+                io->supersample_milli = kSsMilli[ss];
+            unlock();
+            restart_chip(offsetof(RecompLauncherCSettings, supersample_milli), sizeof(int));
+        }
     } else if (S("graphics.supersampling") && g->has_supersampling) {
         lock("graphics.supersampling");
         row_slider(tr("Supersampling"), &io->supersampling, 1, 8, "%dx");
