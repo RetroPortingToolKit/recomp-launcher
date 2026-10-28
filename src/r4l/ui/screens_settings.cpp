@@ -10,6 +10,7 @@
 #include <SDL3/SDL.h>
 
 #include <cctype>
+#include <cfloat>
 #include <cstddef>
 #include <functional>
 #include <mutex>
@@ -703,6 +704,10 @@ void App::draw_controls() {
     const TitleLayer& t = *title;
     title_text(tr("Controls"), nullptr);
     if (!io || !g) return;
+    // One scale for every fixed size on the page, so the scheme buttons, the
+    // player tabs and the binding cells line up at any window size.
+    const float u = std::max(1.0f, ImGui::GetStyle().FontScaleMain);
+    const float avail = ImGui::GetContentRegionAvail().x;
 
     // Modern / Classic (title layer -> mod option)
     if (S("controls.scheme"))
@@ -711,31 +716,42 @@ void App::draw_controls() {
                 if (!t.modern_option || std::strcmp(o.info.id, t.modern_option)) continue;
                 section(tr("Control scheme"));
                 const bool modern = f->info.enabled && !std::strcmp(o.info.value, t.modern_value);
-                const float bw = (ImGui::GetContentRegionAvail().x - 10) * 0.5f;
+                const float bw = (avail - 10 * u) * 0.5f;
                 ImGui::BeginDisabled(L("controls.scheme"));
-                if (big_button(tr("Modern"), ImVec2(bw, 64), modern)) {
+                if (big_button(tr("Modern"), ImVec2(bw, 56 * u), modern)) {
                     if (!f->info.enabled) mods.set_enabled(*f, true);
                     mods.set_option(*f, o, t.modern_value);
                 }
-                ImGui::SameLine(0, 10);
-                if (big_button(tr("Classic"), ImVec2(bw, 64), !modern)) mods.set_option(*f, o, t.classic_value);
+                ImGui::SameLine(0, 10 * u);
+                if (big_button(tr("Classic"), ImVec2(bw, 56 * u), !modern)) mods.set_option(*f, o, t.classic_value);
                 ImGui::EndDisabled();
                 ImGui::TextDisabled("%s", modern ? tr("Analog steering and triggers, camera on the right stick.")
                                                  : tr("The original 1998 button layout."));
             }
         }
 
+    // Players: P1 is selected until the player picks another; everything
+    // below (device, controller type, bindings) is that player's.
     const int players = std::min(std::max(1, t.max_players), g->num_players > 0 ? g->num_players : t.max_players);
-    if (S("controls.devices") || S("controls.profile") || S("controls.deadzone") || S("controls.bindings")) {
+    const bool per_player = S("controls.devices") || S("controls.profile") || S("controls.deadzone") || S("controls.bindings");
+    if (per_player) {
         section(tr("Players"));
+        const float gap = 8 * u;
+        const float bw = (avail - gap * (players - 1)) / players;
         for (int p = 0; p < players; ++p) {
-            if (p) ImGui::SameLine(0, 8);
+            if (p) ImGui::SameLine(0, gap);
             char lbl[8];
             std::snprintf(lbl, sizeof(lbl), "P%d", p + 1);
-            if (big_button(lbl, ImVec2(72, 40), controls_player == p)) controls_player = p;
+            if (big_button(lbl, ImVec2(bw, 40 * u), controls_player == p)) controls_player = p;
+            script_mark(lbl);
         }
     }
     const int pl = std::min(controls_player, players - 1);
+    if (per_player) {
+        char head[32];
+        std::snprintf(head, sizeof head, "%s %d", tr("Player"), pl + 1);
+        section(head);
+    }
     if (S("controls.devices")) {
         ImGui::BeginDisabled(L("controls.devices") || g->lock_device);
         static const char* kSrc[] = {"None", "Keyboard", "Gamepad"};
@@ -811,43 +827,50 @@ void App::draw_controls() {
     if (S("controls.bindings") && !g->hide_rebind) {
         section(tr("Bindings"));
         const int kp = pl < kPsxKeyboardPlayers ? pl : 0;
-        if (ImGui::Button(tr("Map all keys"))) {
+        const float bh = 36 * u;
+        const float tb = (avail - 2 * 8 * u) / 3.0f;
+        if (big_button(tr("Map all keys"), ImVec2(tb, bh), false)) {
             capture = Capture{};
             capture.kind = Capture::Key;
             capture.map_all = true;
             capture.player = kp;
             capture.started = time;
         }
-        ImGui::SameLine();
-        if (ImGui::Button(tr("Map all gamepad buttons"))) {
+        ImGui::SameLine(0, 8 * u);
+        if (big_button(tr("Map all gamepad buttons"), ImVec2(tb, bh), false)) {
             capture = Capture{};
             capture.kind = Capture::PadSource;
             capture.map_all = true;
             capture.started = time;
         }
-        ImGui::SameLine();
-        if (ImGui::Button(tr("Reset bindings"))) {
+        ImGui::SameLine(0, 8 * u);
+        if (big_button(tr("Reset bindings"), ImVec2(tb, bh), false)) {
             s.keys = KeyboardBinds::defaults();
             s.pads.global = PadMapping::defaults();
             s.binds_dirty = true;
         }
-        if (ImGui::BeginTable("##binds", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn(tr("PlayStation"), 0, 1.2f);
-            ImGui::TableSetupColumn(tr("Key"), 0, 1.0f);
-            ImGui::TableSetupColumn(tr("Alt key"), 0, 1.0f);
-            ImGui::TableSetupColumn(tr("Gamepad"), 0, 1.0f);
-            ImGui::TableSetupColumn(tr("Alt gamepad"), 0, 1.0f);
+        ImGui::Dummy(ImVec2(0, 4 * u));
+        // The map: PlayStation input, then its keyboard and gamepad sources
+        // for this player. Every cell is a button filling the cell.
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(6 * u, 4 * u));
+        if (ImGui::BeginTable("##binds", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp |
+                                                 ImGuiTableFlags_NoPadOuterX)) {
+            ImGui::TableSetupColumn(tr("PlayStation"), ImGuiTableColumnFlags_WidthStretch, 1.1f);
+            ImGui::TableSetupColumn(tr("Key"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn(tr("Alt key"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn(tr("Gamepad"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
+            ImGui::TableSetupColumn(tr("Alt gamepad"), ImGuiTableColumnFlags_WidthStretch, 1.0f);
             ImGui::TableHeadersRow();
             PadMapping* pm = s.pads.for_guid("", false);
             for (int i = 0; i < kPsxInputCount; ++i) {
                 ImGui::PushID(i);
-                ImGui::TableNextRow(0, 36);
+                ImGui::TableNextRow(0, theme().row_h);
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(tr(kPsxInputs[i].label));
                 auto cell = [&](const char* id, const std::string& v, Capture::Kind k, bool alt) {
                     ImGui::TableNextColumn();
-                    if (ImGui::Button((std::string(v.empty() ? "-" : v) + "##" + id).c_str(), ImVec2(-1, 0))) {
+                    if (ImGui::Button((std::string(v.empty() ? "-" : v) + "##" + id).c_str(), ImVec2(-FLT_MIN, 0))) {
                         capture = Capture{};
                         capture.kind = k;
                         capture.player = kp;
@@ -866,6 +889,7 @@ void App::draw_controls() {
             }
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar();
     }
 
     // Shortcuts (assist bindings: Rewind, Save states, Fast-forward...)
