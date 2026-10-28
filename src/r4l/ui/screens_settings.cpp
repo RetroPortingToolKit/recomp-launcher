@@ -213,11 +213,13 @@ void App::draw_graphics() {
         unlock();
     }
     if (S("graphics.fullscreen") && (g->has_fullscreen_toggle || g->has_window_size)) {
-        static const char* kLayout[] = {"Windowed", "Fullscreen", "Exclusive fullscreen"};
+        // 1 is borderless fullscreen (the desktop's mode, Alt-Tab friendly),
+        // 2 the exclusive mode change.
+        static const char* kLayout[] = {"Windowed", "Borderless", "Exclusive fullscreen"};
         const char* l[3] = {tr(kLayout[0]), tr(kLayout[1]), tr(kLayout[2])};
         int v = io->fullscreen >= 0 && io->fullscreen <= 2 ? io->fullscreen : 0;
         lock("graphics.fullscreen");
-        if (row_combo(tr("Screen"), &v, l, 3)) io->fullscreen = v;
+        if (row_combo(tr("Window"), &v, l, 3)) io->fullscreen = v;
         unlock();
     }
 
