@@ -87,7 +87,7 @@ struct App {
     std::string pending_install;  // set by the file dialog (any thread), under job.mu
     float ui_scale = 0;
     Screen focus_request = Screen::Count;  // move nav focus once
-    bool content_focus = false;
+    bool content_focus = false;                // Right from the rail: focus the page's first control
     Capture capture;
     Job job;
     double time = 0;

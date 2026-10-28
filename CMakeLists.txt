@@ -58,4 +58,11 @@ if(Python3_FOUND)
         ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=Graphics;R4L_SIZE=853x480;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/graphics_reach.txt"
         PASS_REGULAR_EXPRESSION "failures=0"
         FAIL_REGULAR_EXPRESSION "\\[r4l-script\\] FAIL")
+    # Right from any rail item enters the page (ImGui's own scoring needs a
+    # vertically overlapping candidate, which a lower rail item has none of).
+    add_test(NAME r4l_rail_right COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_rail_right PROPERTIES
+        ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=Graphics;R4L_SIZE=1280x720;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/rail_right.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
 endif()

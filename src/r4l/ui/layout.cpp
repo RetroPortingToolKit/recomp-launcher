@@ -5,6 +5,7 @@
 #include "skin.h"
 #include "ui.h"
 #include "script.h"
+#include "imgui_internal.h"  // NavMoveRequestCancel
 
 #include <SDL3/SDL.h>
 
@@ -251,6 +252,17 @@ void App::frame() {
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
         }
         ImGui::PopStyleColor(3);
+        // Right from any rail item enters the page. ImGui's own scoring only
+        // finds a candidate that overlaps the rail item vertically, so from a
+        // lower item Right did nothing; hand the focus to the page's first
+        // control instead (SetKeyboardFocusHere after the content child opens).
+        if (ImGui::IsItemFocused() && sc != Screen::Resume && sc != Screen::QuitGame &&
+            (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight, false) ||
+             ImGui::IsKeyPressed(ImGuiKey_GamepadLStickRight, false))) {
+            ImGui::NavMoveRequestCancel();
+            if (!sel) screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
+            content_focus = true;
+        }
         const bool hov = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && ImGui::GetIO().NavVisible);
         {
             std::string nl = tr((sc == Screen::Home && setup_mode) ? "Disc setup" : screen_name(sc));
@@ -332,6 +344,10 @@ void App::frame() {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, sk.color("content", ImVec4(0, 0, 0, 0)));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(36 * u, 28 * u));
     ImGui::BeginChild("##content", ImVec2(content.w, content.h), ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened);
+    if (content_focus) {  // Right from the rail: the page's first control
+        ImGui::SetKeyboardFocusHere();
+        content_focus = false;
+    }
     switch (screen) {
     case Screen::Home: draw_home(); break;
     case Screen::Graphics: draw_graphics(); break;

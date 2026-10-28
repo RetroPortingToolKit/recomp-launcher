@@ -1,0 +1,16 @@
+# Right from any rail item enters the page: from Display (the second item,
+# with no page control beside it; the rail reads Display in the r4 skin) the focus lands on the page's first row.
+screen Graphics
+wait 4
+tap nav:Graphics
+wait 3
+key Right
+wait 3
+focused Graphics
+# ... and from Controls the same, onto the Modern button.
+tap nav:Controls
+wait 4
+key Right
+wait 3
+focused Modern
+quit

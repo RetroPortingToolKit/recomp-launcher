@@ -25,6 +25,7 @@
 namespace {
 std::map<ImGuiID, ImRect> g_bb;
 std::map<std::string, ImRect> g_items, g_prev;
+std::map<std::string, ImGuiID> g_ids, g_prev_ids;  // item ids by label, for `focused`
 std::string g_scroll_to;  // `tap`/`find`: bring this item into view while it is drawn
 // Wheel over the middle of the screen: a fixed y can land on the footer of a
 // small window (the PC's hidden window is 480 tall).
@@ -54,6 +55,7 @@ void ImGuiTestEngineHook_ItemInfo(ImGuiContext*, ImGuiID id, const char* label, 
     auto it = g_bb.find(id);
     if (!l.empty() && it != g_bb.end() && !r4l_script_items_has(l)) {
         g_items[l] = it->second;
+        g_ids[l] = id;
         scroll_into_view(l, it->second);
     }
 }
@@ -69,12 +71,15 @@ void script_mark(const char* label) {  // row widgets: the row's own label
     const std::string l = visible(label);
     if (!l.empty() && !g_items.count(l)) {
         g_items[l] = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        g_ids[l] = ImGui::GetItemID();
         scroll_into_view(l, g_items[l]);
     }
 }
 void script_frame_begin() {
     g_prev.swap(g_items);
+    g_prev_ids.swap(g_ids);
     g_items.clear();
+    g_ids.clear();
     g_bb.clear();
 }
 
@@ -267,6 +272,17 @@ void Script::step(App& app, Platform& plat) {
             const float vh = ImGui::GetIO().DisplaySize.y;
             const bool ok = it != g_prev.end() && it->second.Min.y >= 0 && it->second.Max.y <= vh * 0.86f;
             std::fprintf(stderr, "[r4l-script] %s visible \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
+            if (!ok) ++failures_;
+        } else if (op == "focused") {  // keyboard/gamepad focus is on the item with this label
+            auto it = g_prev_ids.find(rest);
+            const ImGuiID nav = ImGui::GetCurrentContext()->NavId;
+            const bool ok = it != g_prev_ids.end() && it->second == nav && nav != 0;
+            std::fprintf(stderr, "[r4l-script] %s focused \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
+            if (!ok && std::getenv("R4L_SCRIPT_DEBUG")) {
+                for (auto& kv : g_prev_ids)
+                    if (kv.second == nav) std::fprintf(stderr, "  focus is on: %s\n", kv.first.c_str());
+                std::fprintf(stderr, "  nav id %08x\n", nav);
+            }
             if (!ok) ++failures_;
         } else if (op == "seen") {  // an item with this label was drawn last frame
             const bool ok = g_prev.count(rest) != 0;
