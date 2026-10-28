@@ -1,0 +1,5 @@
+# Started by Steam (SteamAppId set): no button, a note instead.
+wait 6
+find steam:running
+unseen steam:add
+quit

@@ -79,6 +79,7 @@ const std::vector<Capability>& capabilities() {
         {"controls.assist", true, "Controls", "Rewind / save-state / fast-forward buttons", -1},
         {"controls.mouse", false, "Controls", "Mouse controls", S_OFF(mouse_enabled)},
         {"controls.force_feedback", false, "Controls", "Wheel force feedback (JogCon, experimental)", S_OFF(jogcon_force_feedback)},
+        {"controls.steam", false, "Controls", "Add to Steam (Steam Controller as a gamepad)", -1},
         // ---- Mods
         {"mods.list", true, "Mods", "Mod features and options", -1},
         {"mods.install", true, "Mods", "Install / remove mods", -1},

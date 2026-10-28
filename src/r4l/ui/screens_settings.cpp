@@ -6,6 +6,7 @@
 #include "dialogs.h"
 
 #include "r4l/core/ini.h"
+#include "r4l/core/steam.h"
 
 #include <SDL3/SDL.h>
 
@@ -18,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace r4l {
@@ -698,6 +700,80 @@ void App::draw_mods() {
     ImGui::EndChild();
 }
 
+// ---------------------------------------------------------------- Add to Steam
+
+namespace {
+// controls.steam: a Steam Controller acts as a gamepad only in a game Steam
+// launched (elsewhere Steam applies its Desktop Layout), so the page offers to
+// register this executable as a non-Steam game. Nothing is written until the
+// button is pressed; R4L_STEAM_ROOT points it at a test copy of Steam.
+struct SteamUi {
+    bool checked = false;
+    bool under_steam = false;
+    std::string root, exe;
+    bool registered = false;
+    bool added = false;       // this session's click succeeded
+    std::string error;
+    void refresh() {
+        checked = true;
+        under_steam = running_under_steam();
+        root = steam_root();
+        exe = current_exe_path();
+        registered = !root.empty() && !exe.empty() && steam_shortcut_registered(root, exe);
+    }
+};
+SteamUi g_steam;
+
+void restart_steam() {
+    // steam://exit asks the running client to quit; once it is gone the same
+    // URL handler starts it again. Only ever run from the button.
+    SDL_OpenURL("steam://exit");
+    std::thread([] {
+        SDL_Delay(8000);
+        SDL_OpenURL("steam://open/games");
+    }).detach();
+}
+}  // namespace
+
+void App::draw_steam_section() {
+    if (!g_steam.checked) g_steam.refresh();
+    if (g_steam.under_steam) {
+        section(tr("Steam"));
+        ImGui::TextDisabled("%s", tr("Running from Steam: a Steam Controller works as a gamepad."));
+        script_mark("steam:running");
+        return;
+    }
+    if (g_steam.root.empty() || g_steam.exe.empty()) return;  // Steam not installed
+    const char* name = title->steam_name ? title->steam_name : title->display_name;
+    if (g_steam.added) {
+        section(tr("Steam"));
+        ImGui::TextWrapped("%s", tr("Added to Steam. Restart Steam, then launch the game from your Steam library."));
+        script_mark("steam:added");
+        const float u = std::max(1.0f, ImGui::GetStyle().FontScaleMain);
+        if (big_button(tr("Restart Steam"), ImVec2(220 * u, 40 * u), false)) restart_steam();
+        script_mark("steam:restart");
+        return;
+    }
+    if (g_steam.registered) return;
+    section(tr("Steam"));
+    ImGui::TextWrapped("%s", tr("Steam Controller: add the game to your Steam library and start it from Steam, "
+                                "so Steam gives the controller its gamepad layout. Other controllers work without this."));
+    const float u = std::max(1.0f, ImGui::GetStyle().FontScaleMain);
+    if (big_button(tr("Add to Steam"), ImVec2(220 * u, 40 * u), true)) {
+        SteamShortcut sc;
+        sc.name = name ? name : "Game";
+        sc.exe = g_steam.exe;
+        const size_t cut = sc.exe.find_last_of("/\\");
+        sc.start_dir = cut == std::string::npos ? "." : sc.exe.substr(0, cut + 1);
+        sc.icon = steam_icon_for(sc.exe);
+        g_steam.error.clear();
+        if (steam_add_shortcut(g_steam.root, sc, &g_steam.error) >= 0) g_steam.added = true;
+        g_steam.refresh();
+    }
+    script_mark("steam:add");
+    if (!g_steam.error.empty()) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", g_steam.error.c_str());
+}
+
 // ---------------------------------------------------------------- Controls
 
 void App::draw_controls() {
@@ -921,6 +997,8 @@ void App::draw_controls() {
             ImGui::PopID();
         }
     }
+
+    if (S("controls.steam")) draw_steam_section();
 }
 
 }  // namespace r4l

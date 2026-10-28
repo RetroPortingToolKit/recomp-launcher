@@ -15,6 +15,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "posix_compat.h"
 
 extern "C" int r4l_abi_symbols_present(void);
 extern "C" int r4l_run_overlay_script(int w, int h, const RecompLauncherCGameInfo* game, RecompLauncherCSettings* io,

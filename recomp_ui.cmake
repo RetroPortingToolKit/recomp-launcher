@@ -47,6 +47,7 @@ set(R4L_SOURCES
     ${R4L_ROOT}/src/r4l/core/mods.cpp
     ${R4L_ROOT}/src/r4l/core/quality.cpp
     ${R4L_ROOT}/src/r4l/core/session.cpp
+    ${R4L_ROOT}/src/r4l/core/steam.cpp
     ${R4L_ROOT}/src/r4l/ui/app.cpp
     ${R4L_ROOT}/src/r4l/ui/layout.cpp
     ${R4L_ROOT}/src/r4l/ui/skin.cpp

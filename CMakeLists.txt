@@ -16,7 +16,7 @@ add_executable(r4l-core-tests
     src/r4l/core/binds.cpp src/r4l/core/ini.cpp src/r4l/core/mods.cpp
     src/r4l/core/quality.cpp src/r4l/core/session.cpp
     src/r4l/core/json.cpp src/r4l/core/skin_model.cpp src/r4l/core/surface.cpp
-    src/r4l/core/discscan.cpp src/r4l/core/discfs.cpp src/r4l/core/png.cpp src/r4l/core/memcard.cpp)
+    src/r4l/core/discscan.cpp src/r4l/core/discfs.cpp src/r4l/core/png.cpp src/r4l/core/memcard.cpp src/r4l/core/steam.cpp)
 target_include_directories(r4l-core-tests PRIVATE src)
 add_test(NAME r4l_core COMMAND r4l-core-tests ${CMAKE_CURRENT_SOURCE_DIR}/assets/skins)
 
@@ -91,4 +91,26 @@ if(Python3_FOUND)
         ENVIRONMENT "${_r4l_menu_env};R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/menu_no_disc.txt"
         PASS_REGULAR_EXPRESSION "failures=0"
         FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+endif()
+
+# Add to Steam (controls.steam) against a fake Steam folder: offered, writes
+# the shortcut, shows the restart note; gone on the next start; replaced by a
+# note when Steam started the game.
+if(Python3_FOUND)
+    set(_r4l_steam_root "${CMAKE_CURRENT_BINARY_DIR}/fake-steam")
+    add_test(NAME r4l_steam_fixture COMMAND ${CMAKE_COMMAND} -DROOT=${_r4l_steam_root} -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_fixture.cmake)
+    set_tests_properties(r4l_steam_fixture PROPERTIES FIXTURES_SETUP r4l_steam)
+    set(_r4l_steam_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SCREEN=Controls;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1;R4L_STEAM_ROOT=${_r4l_steam_root}")
+    foreach(_t steam_add steam_after steam_running)
+        add_test(NAME r4l_${_t} COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+        set_tests_properties(r4l_${_t} PROPERTIES
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            FIXTURES_REQUIRED r4l_steam
+            ENVIRONMENT "${_r4l_steam_env};R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/${_t}.txt"
+            PASS_REGULAR_EXPRESSION "failures=0"
+            FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+    endforeach()
+    set_tests_properties(r4l_steam_after PROPERTIES DEPENDS r4l_steam_add)
+    set_tests_properties(r4l_steam_running PROPERTIES DEPENDS r4l_steam_after
+        ENVIRONMENT "${_r4l_steam_env};SteamAppId=1;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/steam_running.txt")
 endif()

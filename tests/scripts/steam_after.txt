@@ -1,0 +1,6 @@
+# Add to Steam, next start: already registered, so the section is gone.
+wait 6
+seen P1
+unseen steam:add
+unseen steam:added
+quit

@@ -168,6 +168,7 @@ struct App {
     void draw_setup();
     void draw_about();
     void draw_system();     // audio, system, memory cards, BIOS, hotkeys
+    void draw_steam_section();  // controls.steam: Add to Steam
     void draw_main();       // launcher.main_screen: the main screen's page
     void draw_states(bool save);  // Save State / Load State slots
     bool states_supported() const;  // the host has save-state slots

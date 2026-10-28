@@ -74,6 +74,10 @@ struct TitleLayer {
     // Optional: draw a title-specific hero banner into the Home card (UI
     // layer supplies an ImDrawList via void* to keep this header ImGui-free).
     void (*draw_hero)(void* draw_list, float x0, float y0, float x1, float y1, double time);
+
+    // Optional: the Steam library name for "Add to Steam" (controls.steam);
+    // null uses display_name.
+    const char* steam_name;
 };
 
 // Implemented by exactly one titles/<id>/ translation unit.

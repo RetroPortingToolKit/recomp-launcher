@@ -1,0 +1,13 @@
+# Add to Steam (controls.steam) with a fake Steam folder (R4L_STEAM_ROOT):
+# the button is offered, writes the shortcut and shows the restart message.
+wait 6
+find steam:add
+unseen steam:added
+tap steam:add
+wait 4
+seen steam:added
+seen steam:restart
+unseen steam:add
+file fake-steam/userdata/4242/config/shortcuts.vdf Ridge Racer Type 4 Recompiled
+file fake-steam/userdata/4242/config/shortcuts.vdf LaunchOptions
+quit

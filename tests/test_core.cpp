@@ -9,6 +9,7 @@
 #include "r4l/core/quality.h"
 #include "r4l/core/session.h"
 #include "r4l/core/skin_model.h"
+#include "r4l/core/steam.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -18,6 +19,7 @@
 #include <string>
 #include <unistd.h>
 #include <sys/stat.h>
+#include "posix_compat.h"
 #include <cmath>
 
 using namespace r4l;
@@ -360,9 +362,87 @@ static void test_memcard(const std::string& dir) {
     CHECK(m.compare(63 * 128, 128, m, 0, 128) == 0);
 }
 
+// Add to Steam: binary shortcuts.vdf round trip, app id, append-only, idempotent.
+static void test_steam_shortcuts(const std::string& dir) {
+    CHECK(steam_crc32("123456789") == 0xCBF43926u);
+    CHECK(steam_shortcut_appid("C:/g/r4.exe", "R4") == (steam_crc32("\"C:/g/r4.exe\"R4") | 0x80000000u));
+    CHECK(steam_shortcut_appid("x", "y") & 0x80000000u);
+
+    // An existing file: one shortcut with fields this code does not know.
+    std::vector<VdfNode> top{VdfNode::map("shortcuts")};
+    VdfNode e = VdfNode::map("0");
+    e.kids.push_back(VdfNode::int32("appid", 0x81234567u));
+    e.kids.push_back(VdfNode::string("AppName", "Other Game"));
+    e.kids.push_back(VdfNode::string("Exe", "\"C:/other/game.exe\""));
+    VdfNode wide;
+    wide.type = VdfNode::UInt64;
+    wide.key = "FutureField";
+    wide.raw = {1, 2, 3, 4, 5, 6, 7, 8};
+    e.kids.push_back(wide);
+    VdfNode tags = VdfNode::map("tags");
+    tags.kids.push_back(VdfNode::string("0", "favorite"));
+    e.kids.push_back(tags);
+    top[0].kids.push_back(e);
+    const std::string orig = vdf_write(top);
+    CHECK(orig.size() > 2 && orig[orig.size() - 1] == '\x08' && orig[orig.size() - 2] == '\x08');
+    std::vector<VdfNode> back;
+    CHECK(vdf_parse(orig, &back));
+    CHECK(vdf_write(back) == orig);
+    CHECK(!vdf_parse(orig.substr(0, orig.size() - 1), &back));       // truncated
+    CHECK(!vdf_parse(std::string("\x05k\0", 3) + "\x08", &back));    // unknown type
+
+    // Two users: one with that file, one with no shortcuts.vdf yet.
+    const std::string root = dir + "/steam";
+    const std::string u1 = root + "/userdata/1001/config", u2 = root + "/userdata/2002/config";
+    for (const std::string& d : {root, root + "/userdata", root + "/userdata/1001", u1, root + "/userdata/2002",
+                                 root + "/userdata/0" /* anonymous: skipped */})
+        mkdir(d.c_str(), 0700);
+    {
+        std::ofstream f(u1 + "/shortcuts.vdf", std::ios::binary);
+        f.write(orig.data(), static_cast<std::streamsize>(orig.size()));
+    }
+    CHECK(steam_user_config_dirs(root).size() == 2);
+    const std::string exe = "C:/Games/R4/r4-runtime.exe";
+    CHECK(!steam_shortcut_registered(root, exe));
+    SteamShortcut sc{"Ridge Racer Type 4 Recompiled", exe, "C:/Games/R4/", "C:/Games/R4/r4-runtime.exe", ""};
+    std::string err;
+    CHECK(steam_add_shortcut(root, sc, &err) == 2);
+    CHECK(err.empty());
+    CHECK(slurp(u1 + "/shortcuts.vdf.bak") == orig);
+    CHECK(steam_shortcut_registered(root, exe));
+
+    std::vector<VdfNode> got;
+    CHECK(vdf_parse(slurp(u1 + "/shortcuts.vdf"), &got));
+    CHECK(got.size() == 1 && got[0].kids.size() == 2);
+    if (got.size() == 1 && got[0].kids.size() == 2) {
+        CHECK(vdf_write({got[0].kids[0]}) == vdf_write({e}));  // old entry byte-identical
+        const VdfNode& n = got[0].kids[1];
+        CHECK(n.key == "1");
+        CHECK(n.find("AppName") && n.find("AppName")->str == sc.name);
+        CHECK(n.find("Exe") && n.find("Exe")->str == "\"" + exe + "\"");
+        CHECK(n.find("StartDir") && n.find("StartDir")->str == "\"C:/Games/R4/\"");
+        CHECK(n.find("LaunchOptions") && n.find("LaunchOptions")->str.empty());
+        CHECK(n.find("appid") && n.find("appid")->u32() == steam_shortcut_appid(exe, sc.name));
+    }
+    std::vector<VdfNode> got2;
+    CHECK(vdf_parse(slurp(u2 + "/shortcuts.vdf"), &got2));
+    CHECK(got2.size() == 1 && got2[0].key == "shortcuts" && got2[0].kids.size() == 1);
+
+    // Idempotent: a second add writes nothing.
+    const std::string after = slurp(u1 + "/shortcuts.vdf");
+    CHECK(steam_add_shortcut(root, sc, &err) == 0);
+    CHECK(slurp(u1 + "/shortcuts.vdf") == after);
+
+    // A file it cannot parse is left alone.
+    spit(u2 + "/shortcuts.vdf", "garbage");
+    CHECK(steam_add_shortcut(root, SteamShortcut{"Other", "C:/x.exe", "C:/", "", ""}, &err) == -1);
+    CHECK(slurp(u2 + "/shortcuts.vdf") == "garbage");
+}
+
 int main(int argc, char** argv) {
     const std::string dir = tmpdir();
     test_ini_preserves_foreign_lines();
+    test_steam_shortcuts(dir);
     test_keybinds_roundtrip(dir);
     test_input_ini_roundtrip(dir);
     test_hotkeys(dir);
