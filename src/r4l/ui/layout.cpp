@@ -246,9 +246,8 @@ void App::frame() {
         if (ImGui::Selectable("##nav", sel, 0, ImVec2(w, item_h))) {
             sk.play("confirm");
             if (sc == Screen::Resume) overlay_open = false;
-            else if (sc == Screen::QuitGame) {
-                if (host && host->request_exit) host->request_exit(host->ctx, 0);
-            } else
+            else if (sc == Screen::QuitGame) quit_confirm = true;
+            else
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
         }
         ImGui::PopStyleColor(3);
@@ -391,7 +390,41 @@ void App::frame() {
     ImGui::PopStyleColor();
 
     draw_capture_modal();
+    draw_quit_confirm();
     ImGui::End();
+}
+
+// Quit game asks first. Yes/No are plain buttons, so A/Enter picks and B/Esc
+// (the popup's own cancel) closes it; No has the focus until the player moves.
+void App::draw_quit_confirm() {
+    if (quit_confirm && !ImGui::IsPopupOpen("Quit game?")) ImGui::OpenPopup("Quit game?");
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (!ImGui::BeginPopupModal("Quit game?", nullptr,
+                                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove))
+        return;
+    ImGui::PushFont(theme().bold, theme().body_size * 1.2f);
+    ImGui::TextUnformatted(tr("Quit the game?"));
+    ImGui::PopFont();
+    ImGui::TextDisabled("%s", tr("Unsaved race progress is lost."));
+    ImGui::Dummy(ImVec2(0, 6));
+    const float bw = 140 * (ui_scale > 0 ? ui_scale : 1.0f);
+    const bool yes = big_button(tr("Yes"), ImVec2(bw, 0), false);
+    script_mark("quit:yes");
+    ImGui::SameLine();
+    if (quit_confirm) ImGui::SetKeyboardFocusHere();  // first frame: land on No
+    const bool no = big_button(tr("No"), ImVec2(bw, 0), true);
+    script_mark("quit:no");
+    quit_confirm = false;
+    if (yes) {
+        if (host && host->request_exit) host->request_exit(host->ctx, 0);
+        else request_quit();
+        ImGui::CloseCurrentPopup();
+    }
+    if (no || ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) {
+        skin().play("back");
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 bool App::restart_needed(size_t off, size_t size) const {

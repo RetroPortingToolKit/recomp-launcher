@@ -88,6 +88,7 @@ struct App {
     float ui_scale = 0;
     Screen focus_request = Screen::Count;  // move nav focus once
     bool content_focus = false;                // Right from the rail: focus the page's first control
+    bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
     Capture capture;
     Job job;
     double time = 0;
@@ -155,6 +156,7 @@ struct App {
     void restore_defaults();
     void draw_footer();
     void draw_capture_modal();
+    void draw_quit_confirm();              // Quit game: Yes / No
     void overlay_tick();                   // live-apply + resume handling
     bool restart_needed(size_t offset, size_t size) const;
     void restart_chip(size_t offset, size_t size);
