@@ -1,0 +1,9 @@
+# The wheel scrolls the Credits body from anywhere over it, a card included:
+# the psxrecomp notice starts below the fold and the wheel over the first
+# card brings it on screen.
+screen About
+wait 4
+wheel 500 300 -5
+wait 3
+visible https://github.com/RetroPortingToolKit/psxrecomp
+quit

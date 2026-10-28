@@ -65,4 +65,10 @@ if(Python3_FOUND)
         ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=Graphics;R4L_SIZE=1280x720;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/rail_right.txt"
         PASS_REGULAR_EXPRESSION "failures=0"
         FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+    # The Credits body scrolls under the wheel wherever the mouse is over it.
+    add_test(NAME r4l_about_wheel COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_about_wheel PROPERTIES
+        ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=About;R4L_SIZE=1280x720;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/about_wheel.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
 endif()

@@ -884,10 +884,23 @@ void App::draw_about() {
     ImGui::TextWrapped("%s", t.about);
     ImGui::PopStyleColor();
     section("Credits and notices");
+    // Cards are drawn into this (scrolling) body, not as child windows: a
+    // wheel over a child window is the child's first and only reaches the
+    // body when ImGui decides to forward it, which it did not do reliably
+    // over these auto-sized cards. Plain groups have no window of their own,
+    // so every wheel tick lands on the body.
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 pad = ImGui::GetStyle().WindowPadding;
+    const float card_w = ImGui::GetContentRegionAvail().x;
     for (int i = 0; i < t.notice_count; ++i) {
         const TitleNotice& n = t.notices[i];
         ImGui::PushID(i);
-        ImGui::BeginChild("##n", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+        const ImVec2 top = ImGui::GetCursorScreenPos();
+        dl->ChannelsSplit(2);
+        dl->ChannelsSetCurrent(1);
+        ImGui::SetCursorScreenPos(ImVec2(top.x + pad.x, top.y + pad.y));
+        ImGui::BeginGroup();
+        ImGui::PushTextWrapPos(top.x + card_w - pad.x);
         ImGui::PushFont(theme().bold, 0.0f);
         ImGui::TextUnformatted(n.heading);
         ImGui::PopFont();
@@ -897,7 +910,14 @@ void App::draw_about() {
             if (ImGui::Selectable(n.url, false, 0, ImGui::CalcTextSize(n.url))) SDL_OpenURL(n.url);
             ImGui::PopStyleColor();
         }
-        ImGui::EndChild();
+        ImGui::PopTextWrapPos();
+        ImGui::EndGroup();
+        const ImVec2 bottom(top.x + card_w, ImGui::GetItemRectMax().y + pad.y);
+        dl->ChannelsSetCurrent(0);
+        dl->AddRectFilled(top, bottom, u32(theme().surface), theme().radius);
+        dl->ChannelsMerge();
+        ImGui::SetCursorScreenPos(ImVec2(top.x, bottom.y));
+        ImGui::Dummy(ImVec2(card_w, 0));
         ImGui::PopID();
     }
     if (s.game && s.game->credits_text) {
