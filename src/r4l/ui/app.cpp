@@ -47,6 +47,7 @@ const char* screen_name(Screen s) {
     case Screen::Back: return "Back";
     case Screen::SaveState: return "Save State";
     case Screen::LoadState: return "Load State";
+    case Screen::Steam: return "Add to Steam";
     default: return "";
     }
 }

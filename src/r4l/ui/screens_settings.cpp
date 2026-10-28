@@ -735,8 +735,16 @@ void restart_steam() {
 }
 }  // namespace
 
+bool App::steam_offered() {
+    if (!S("controls.steam")) return false;
+    if (!g_steam.checked) g_steam.refresh();
+    if (g_steam.under_steam || g_steam.root.empty() || g_steam.exe.empty()) return false;
+    return g_steam.added || !g_steam.registered;  // after the click: the restart note stays
+}
+
 void App::draw_steam_section() {
     if (!g_steam.checked) g_steam.refresh();
+    screen_title(tr("Add to Steam"), nullptr);
     if (g_steam.under_steam) {
         section(tr("Steam"));
         ImGui::TextDisabled("%s", tr("Running from Steam: a Steam Controller works as a gamepad."));
@@ -998,7 +1006,6 @@ void App::draw_controls() {
         }
     }
 
-    if (S("controls.steam")) draw_steam_section();
 }
 
 }  // namespace r4l

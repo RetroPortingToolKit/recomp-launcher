@@ -35,6 +35,7 @@ const char* skin_key(Screen s) {
     case Screen::Back: return "Back";
     case Screen::SaveState: return "SaveState";
     case Screen::LoadState: return "LoadState";
+    case Screen::Steam: return "Steam";
     default: return "";
     }
 }
@@ -129,40 +130,48 @@ void App::frame() {
     main_screen = surf.automatic("launcher.main_screen");
     const bool main_rail = main_screen && overlay && !options_open;
     if (main_screen && overlay && !options_open && screen != Screen::Main && screen != Screen::SaveState &&
-        screen != Screen::LoadState)
+        screen != Screen::LoadState && screen != Screen::Steam && !(setup_only && screen == Screen::Setup))
         options_open = true;  // a page was asked for directly (script, deep link)
     if (main_rail && !states_allowed() && (screen == Screen::SaveState || screen == Screen::LoadState))
         screen = Screen::Main;
     // The rail lists only pages the title's surface manifest leaves something on.
     std::vector<Screen> navv;
     if (main_rail) {
-        navv.push_back(Screen::Resume);
-        if (states_allowed()) {
-            if (game_started) navv.push_back(Screen::SaveState);
-            navv.push_back(Screen::LoadState);
+        // The main screen holds only these; every page lives under Options.
+        if (setup_only) {
+            navv.push_back(Screen::Setup);  // shown as Select Disc
+        } else {
+            navv.push_back(Screen::Resume);
+            if (states_allowed()) {
+                if (game_started) navv.push_back(Screen::SaveState);
+                navv.push_back(Screen::LoadState);
+            }
+            navv.push_back(Screen::Options);
+            if (steam_offered()) navv.push_back(Screen::Steam);
         }
-        navv.push_back(Screen::Options);
-    } else if (main_screen && overlay) navv.push_back(Screen::Back);
-    else if (overlay) navv.push_back(Screen::Resume);
-    else if (setup_only) navv.push_back(Screen::Setup);  // in-game first run: setup, then play
-    else navv.push_back(Screen::Home);
-    if (main_rail) {
-    } else if (setup_only) {
-        // The game starts as soon as the disc checks out.
-        if (s.media_ready() && !job.running) request_launch();
-    } else if (surf.any_shown("graphics.")) navv.push_back(Screen::Graphics);
-    if (!setup_only && surf.any_shown("controls.")) navv.push_back(Screen::Controls);
-    if (!setup_only && surf.any_shown("mods.") && mods.available()) navv.push_back(Screen::Mods);
-    if (!setup_only && (!overlay || in_game) && surf.any_shown("netplay.") && s.game && s.game->netplay_supported && s.game->netplay)
-        navv.push_back(Screen::Netplay);
-    if (!setup_only && (surf.any_shown("audio.") || surf.any_shown("system.") || S("bios.select")))
-        navv.push_back(Screen::System);
-    if (overlay && in_game && !netplay_locked && S("disc.setup")) navv.push_back(Screen::Setup);
-    if (main_rail) {
-    } else if (setup_only && main_screen) {
-        navv.resize(1);  // Select Disc is the only entry
-    } else if (surf.any_shown("about.")) navv.push_back(Screen::About);
-    if (overlay && (main_rail || !main_screen)) navv.push_back(Screen::QuitGame);
+        navv.push_back(Screen::QuitGame);
+    } else {
+        if (main_screen && overlay) navv.push_back(Screen::Back);
+        else if (overlay) navv.push_back(Screen::Resume);
+        else if (setup_only) navv.push_back(Screen::Setup);  // in-game first run: setup, then play
+        else navv.push_back(Screen::Home);
+        if (setup_only) {
+            // The game starts as soon as the disc checks out.
+            if (s.media_ready() && !job.running) request_launch();
+        } else {
+            if (surf.any_shown("graphics.")) navv.push_back(Screen::Graphics);
+            if (surf.any_shown("controls.")) navv.push_back(Screen::Controls);
+            if (surf.any_shown("mods.") && mods.available()) navv.push_back(Screen::Mods);
+            if ((!overlay || in_game) && surf.any_shown("netplay.") && s.game && s.game->netplay_supported && s.game->netplay)
+                navv.push_back(Screen::Netplay);
+            if (surf.any_shown("audio.") || surf.any_shown("system.") || S("bios.select")) navv.push_back(Screen::System);
+        }
+        if (overlay && in_game && !netplay_locked && S("disc.setup")) navv.push_back(Screen::Setup);
+        if (setup_only && main_screen) navv.resize(1);  // Select Disc is the only entry
+        else if (surf.any_shown("about.")) navv.push_back(Screen::About);
+        if (!main_screen && !setup_only && steam_offered()) navv.push_back(Screen::Steam);
+        if (overlay && !main_screen) navv.push_back(Screen::QuitGame);
+    }
     const Screen* nav = navv.data();
     const int nav_n = static_cast<int>(navv.size());
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -397,6 +406,7 @@ void App::frame() {
     case Screen::Main: draw_main(); break;
     case Screen::SaveState: draw_states(true); break;
     case Screen::LoadState: draw_states(false); break;
+    case Screen::Steam: draw_steam_section(); break;
     default: break;
     }
     screen_body_end();

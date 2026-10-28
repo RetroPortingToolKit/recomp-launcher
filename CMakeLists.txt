@@ -73,7 +73,9 @@ if(Python3_FOUND)
         FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
     # In-game menu main screen (launcher.main_screen): Start/Resume Game,
     # save states, Options with Back, Quit; first run with no disc: Select Disc.
-    set(_r4l_menu_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1")
+    # No Steam unless a test brings its own fake folder (the PC's Steam would
+    # add the Add to Steam entry).
+    set(_r4l_menu_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1;R4L_STEAM_ROOT=${CMAKE_CURRENT_BINARY_DIR}/no-steam")
     foreach(_t menu_main_screen menu_states)
         add_test(NAME r4l_${_t} COMMAND r4l-skin-render --run-overlay ${CMAKE_CURRENT_SOURCE_DIR}/assets)
         set_tests_properties(r4l_${_t} PROPERTIES
@@ -100,7 +102,7 @@ if(Python3_FOUND)
     set(_r4l_steam_root "${CMAKE_CURRENT_BINARY_DIR}/fake-steam")
     add_test(NAME r4l_steam_fixture COMMAND ${CMAKE_COMMAND} -DROOT=${_r4l_steam_root} -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_fixture.cmake)
     set_tests_properties(r4l_steam_fixture PROPERTIES FIXTURES_SETUP r4l_steam)
-    set(_r4l_steam_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SCREEN=Controls;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1;R4L_STEAM_ROOT=${_r4l_steam_root}")
+    set(_r4l_steam_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SCREEN=Add to Steam;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1;R4L_STEAM_ROOT=${_r4l_steam_root}")
     foreach(_t steam_add steam_after steam_running)
         add_test(NAME r4l_${_t} COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
         set_tests_properties(r4l_${_t} PROPERTIES
@@ -111,6 +113,17 @@ if(Python3_FOUND)
             FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
     endforeach()
     set_tests_properties(r4l_steam_after PROPERTIES DEPENDS r4l_steam_add)
+    # Add to Steam on the in-game main screen, against its own fake folder.
+    set(_r4l_menu_steam_root "${CMAKE_CURRENT_BINARY_DIR}/fake-steam-menu")
+    add_test(NAME r4l_menu_steam_fixture COMMAND ${CMAKE_COMMAND} -DROOT=${_r4l_menu_steam_root} -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_fixture.cmake)
+    set_tests_properties(r4l_menu_steam_fixture PROPERTIES FIXTURES_SETUP r4l_menu_steam)
+    add_test(NAME r4l_menu_steam COMMAND r4l-skin-render --run-overlay ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_menu_steam PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        FIXTURES_REQUIRED r4l_menu_steam
+        ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1;R4L_FAKE_LOBBY=0;R4L_STEAM_ROOT=${_r4l_menu_steam_root};R4L_OVERLAY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/menu_steam.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
     set_tests_properties(r4l_steam_running PROPERTIES DEPENDS r4l_steam_after
         ENVIRONMENT "${_r4l_steam_env};SteamAppId=1;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/steam_running.txt")
 endif()

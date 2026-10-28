@@ -1,6 +1,6 @@
-# Add to Steam, next start: already registered, so the section is gone.
+# Add to Steam, next start: already registered, so the entry is gone.
 wait 6
-seen P1
+unseen nav:Add to Steam
 unseen steam:add
 unseen steam:added
 quit

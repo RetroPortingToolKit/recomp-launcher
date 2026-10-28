@@ -26,6 +26,7 @@ enum class Screen {
     // launcher.main_screen (in-game menu): the main screen's page and its
     // rail entries; Options opens the other pages behind a Back entry.
     Main, Options, Back, SaveState, LoadState,
+    Steam,  // controls.steam: Add to Steam (main screen)
     Count
 };
 enum class Mode { Launcher, Overlay };
@@ -169,6 +170,7 @@ struct App {
     void draw_about();
     void draw_system();     // audio, system, memory cards, BIOS, hotkeys
     void draw_steam_section();  // controls.steam: Add to Steam
+    bool steam_offered();       // Steam installed, not running from it, not yet registered (or added now)
     void draw_main();       // launcher.main_screen: the main screen's page
     void draw_states(bool save);  // Save State / Load State slots
     bool states_supported() const;  // the host has save-state slots

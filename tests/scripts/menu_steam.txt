@@ -1,0 +1,18 @@
+# Add to Steam on the in-game main screen (fake Steam folder, not running
+# from Steam, not registered): between Options and Quit game; the click
+# writes the shortcut and the entry stays with the restart note.
+wait 6
+open 1
+rail Start Game, Load State, Options, Add to Steam, Quit game
+tap nav:Add to Steam
+wait 4
+visible steam:add
+tap steam:add
+wait 4
+seen steam:added
+seen steam:restart
+rail Start Game, Load State, Options, Add to Steam, Quit game
+tap nav:Options
+wait 4
+rail Back, Graphics, Controls, Mods, Netplay, Settings, Disc setup, About
+unseen steam:add

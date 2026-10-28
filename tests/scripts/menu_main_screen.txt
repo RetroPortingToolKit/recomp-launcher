@@ -7,15 +7,12 @@ seen nav:Load State
 unseen nav:Save State
 seen nav:Options
 seen nav:Quit game
-unseen nav:Graphics
+rail Start Game, Load State, Options, Quit game
 focused nav:Start Game
 # Options: the pages behind Back.
 tap nav:Options
 wait 4
-seen nav:Back
-seen nav:Graphics
-seen nav:Controls
-unseen nav:Start Game
+rail Back, Graphics, Controls, Mods, Netplay, Settings, Disc setup, About
 focused nav:Back
 # Back returns to the main screen, focus on Options...
 tap nav:Back
@@ -36,8 +33,7 @@ open 0
 key Escape
 wait 6
 open 1
-seen nav:Resume Game
-seen nav:Save State
+rail Resume Game, Save State, Load State, Options, Quit game
 # Select (launcher.select_menu) goes back from Options too.
 tap nav:Options
 wait 4

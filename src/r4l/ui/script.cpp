@@ -314,6 +314,19 @@ void Script::step(App& app, Platform& plat) {
                 std::fprintf(stderr, "  nav id %08x\n", nav);
             }
             if (!ok) ++failures_;
+        } else if (op == "rail") {  // the rail lists exactly these, top to bottom: rail A, B, C
+            std::vector<std::pair<float, std::string>> got;
+            for (auto& kv : g_prev)
+                if (kv.first.rfind("nav:", 0) == 0) got.emplace_back(kv.second.Min.y, kv.first.substr(4));
+            std::sort(got.begin(), got.end());
+            std::string have;
+            for (auto& g : got) have += (have.empty() ? "" : ", ") + g.second;
+            std::string want;
+            std::istringstream a(rest);
+            for (std::string w; std::getline(a, w, ',');) want += (want.empty() ? "" : ", ") + trim(w);
+            const bool ok = have == want;
+            std::fprintf(stderr, "[r4l-script] %s rail \"%s\" (now \"%s\")\n", ok ? "PASS" : "FAIL", want.c_str(), have.c_str());
+            if (!ok) ++failures_;
         } else if (op == "unseen") {  // no item with this label was drawn last frame
             const bool ok = g_prev.count(rest) == 0;
             std::fprintf(stderr, "[r4l-script] %s unseen \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());

@@ -379,7 +379,7 @@ void App::draw_main() {
     const char* name = s.game && s.game->name ? s.game->name : "";
     screen_title(name, tr(game_started ? "Paused" : "Ready to start"));
     ImGui::Dummy(ImVec2(0, 8));
-    ImGui::PushStyleColor(ImGuiCol_Text, theme().text_dim);
+    ImGui::PushStyleColor(ImGuiCol_Text, theme().text);  // readable on the dark overlay panel
     ImGui::TextWrapped("%s", tr(game_started ? "Resume Game returns to the race. Options holds display, controls, garage, netplay and settings."
                                              : "Start Game boots the race. Options holds display, controls, garage, netplay and settings."));
     if (netplay_locked) ImGui::TextWrapped("%s", tr("Save states are unavailable during netplay."));

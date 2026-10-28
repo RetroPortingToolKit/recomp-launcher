@@ -1,7 +1,8 @@
 # Add to Steam (controls.steam) with a fake Steam folder (R4L_STEAM_ROOT):
-# the button is offered, writes the shortcut and shows the restart message.
+# a rail entry of its own; the button writes the shortcut and shows the
+# restart message.
 wait 6
-find steam:add
+visible steam:add
 unseen steam:added
 tap steam:add
 wait 4
