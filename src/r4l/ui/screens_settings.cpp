@@ -1,6 +1,7 @@
 // screens_settings.cpp — Graphics, Mods and Controls.
 #include "skin.h"
 #include "ui.h"
+#include "recomp_launcher_overlay.h"
 #include "script.h"
 #include "imgui_internal.h"
 #include "dialogs.h"
@@ -232,7 +233,7 @@ void App::draw_graphics() {
             g->renderer_ids && io->renderer >= 0 && io->renderer < g->num_renderers)
             std::snprintf(io->renderer_id, sizeof io->renderer_id, "%s", g->renderer_ids[io->renderer]);
         unlock();
-        restart_chip(offsetof(RecompLauncherCSettings, renderer), sizeof(int));
+        restart_chip(offsetof(RecompLauncherCSettings, renderer), sizeof(int), RECOMP_OVERLAY_RESTART_RENDERER);
     }
     if (S("graphics.window_size") && g->has_window_size) {
         lock("graphics.window_size");
@@ -265,7 +266,8 @@ void App::draw_graphics() {
                       g->internal_resolution_note))
             io->internal_resolution = g->internal_resolution_values[idx];
         unlock();
-        restart_chip(offsetof(RecompLauncherCSettings, internal_resolution), sizeof(int));
+        restart_chip(offsetof(RecompLauncherCSettings, internal_resolution), sizeof(int),
+                     RECOMP_OVERLAY_RESTART_INTERNAL_RESOLUTION);
         if (g->has_supersample && S("graphics.supersampling")) {
             static const char* const kSsLabels[] = {"Off", "1.25x", "1.5x", "2x"};
             static const int kSsMilli[] = {1000, 1250, 1500, 2000};
@@ -277,7 +279,8 @@ void App::draw_graphics() {
                           tr("Renders above the internal resolution and scales down for smoother edges.")))
                 io->supersample_milli = kSsMilli[ss];
             unlock();
-            restart_chip(offsetof(RecompLauncherCSettings, supersample_milli), sizeof(int));
+            restart_chip(offsetof(RecompLauncherCSettings, supersample_milli), sizeof(int),
+                         RECOMP_OVERLAY_RESTART_INTERNAL_RESOLUTION);
         }
     } else if (S("graphics.supersampling") && g->has_supersampling) {
         lock("graphics.supersampling");
@@ -376,7 +379,8 @@ void App::draw_graphics() {
         section(tr("Pipeline"));
         if (S("graphics.render_thread")) row_toggle(tr("Render thread"), &io->render_thread);
         if (S("graphics.present_thread")) row_toggle(tr("Present thread"), &io->present_thread);
-        restart_chip(offsetof(RecompLauncherCSettings, render_thread), 2 * sizeof(int));
+        restart_chip(offsetof(RecompLauncherCSettings, render_thread), 2 * sizeof(int),
+                     RECOMP_OVERLAY_RESTART_THREADS);
         if (S("graphics.frame_generation") == false && g->has_render_pipeline && S("graphics.render_thread"))
             row_toggle(tr("Smooth motion"), &io->frame_generation);
     }

@@ -186,7 +186,7 @@ struct App {
     void draw_quit_confirm();              // Quit game: Yes / No
     void overlay_tick();                   // live-apply + resume handling
     bool restart_needed(size_t offset, size_t size) const;
-    void restart_chip(size_t offset, size_t size);
+    void restart_chip(size_t offset, size_t size, unsigned host_bit = 0);
 };
 
 // Translation (assets/i18n/<lang>.json); falls back to the English text.

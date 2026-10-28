@@ -483,8 +483,11 @@ bool App::restart_needed(size_t off, size_t size) const {
     return std::memcmp(reinterpret_cast<const char*>(s.io) + off, reinterpret_cast<const char*>(&opened) + off, size) != 0;
 }
 
-void App::restart_chip(size_t off, size_t size) {
+void App::restart_chip(size_t off, size_t size, unsigned host_bit) {
     if (!restart_needed(off, size)) return;
+    // The host says which groups really wait for a relaunch; a change it
+    // applied live (e.g. Internal resolution) carries no chip.
+    if (host_bit && host && host->apply_settings && !(applied_bits & host_bit)) return;
     chip("Applies after restart", theme().warn);
 }
 
