@@ -49,12 +49,32 @@ struct Overlay {
     std::atomic<bool> closing{false};   // render asked to close; main applies
     unsigned pad_held = 0;              // main thread
     unsigned combo = (1u << SDL_GAMEPAD_BUTTON_START) | (1u << SDL_GAMEPAD_BUTTON_BACK);
+    // launcher.select_menu: Select pressed and released on its own opens the
+    // menu. While it is held the menu reports itself open without drawing,
+    // so the host feeds the game released pads: the game never sees that
+    // Select. Another button during the hold makes it a chord (Select + Y
+    // rewind...), which the host's shortcuts read; then release opens nothing.
+    bool select_menu = false;
+    std::atomic<bool> select_hold{false};
+    bool select_chord = false;          // main thread
+    bool boot_open = false;             // opened at boot: focus Resume
     std::mutex mu;
     std::vector<SDL_Event> events;      // main -> render
     uint64_t last_ns = 0;
 };
 Overlay* g_ov = nullptr;
 std::unique_ptr<Script> g_carry_script;  // R4L_OVERLAY_SCRIPT across a provider detach/attach (tests)
+bool g_boot_menu_done = false;  // launcher.boot_menu shows once per process (sessions re-attach)
+
+// launcher.boot_menu: open at boot unless the player or the command line
+// skipped the launcher, a restart-only relaunch is under way, or this
+// process already showed it (a later session of the same run).
+bool boot_menu_wanted(const App& a) {
+    if (g_boot_menu_done || !a.surf.automatic("launcher.boot_menu")) return false;
+    if (a.s.io && a.s.io->skip_launcher) return false;
+    if (const char* e = std::getenv("R4L_BOOT_MENU_DONE"); e && *e == '1') return false;
+    return true;
+}
 
 ImGuiKey imgui_key(SDL_Scancode sc) {
     switch (sc) {
@@ -162,7 +182,9 @@ void apply_transitions(Overlay& o) {
         a.netplay_locked = o.host && o.host->netplay_active && o.host->netplay_active(o.host->ctx);
         a.overlay_open = true;
         a.screen = Screen::Graphics;
-        a.focus_request = Screen::Graphics;
+        // At boot the first press is Resume, which starts the game.
+        a.focus_request = o.boot_open ? Screen::Resume : Screen::Graphics;
+        o.boot_open = false;
         if (a.s.io) a.opened = a.applied = *a.s.io;
         o.disc_at_open = a.s.primary_disc();
         a.exit_requested = false;
@@ -183,6 +205,13 @@ void apply_transitions(Overlay& o) {
             if (disc) a.s.persist_media(&err);
             if (a.applied_bits || a.mods_restart || disc) {
                 std::fprintf(stdout, "r4l: relaunching for restart-only changes\n");
+                // The relaunched game starts straight in: the player already
+                // left the boot menu.
+#if defined(_WIN32)
+                _putenv_s("R4L_BOOT_MENU_DONE", "1");
+#else
+                setenv("R4L_BOOT_MENU_DONE", "1", 1);
+#endif
                 a.exit_requested = true;
                 o.host->request_exit(o.host->ctx, 2);
             }
@@ -244,6 +273,8 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
         }
     }
     if (const char* c = std::getenv("R4L_OVERLAY_COMBO")) g_ov->combo = static_cast<unsigned>(std::strtoul(c, nullptr, 0));
+    g_ov->select_menu = a.surf.automatic("launcher.select_menu");
+    a.pad_back_closes = g_ov->select_menu;
     ImGuiContext* prev = ImGui::GetCurrentContext();
     g_ov->ctx = ImGui::CreateContext();
     ImGui::SetCurrentContext(g_ov->ctx);
@@ -252,6 +283,11 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
     im.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
     im.BackendFlags |= ImGuiBackendFlags_HasGamepad;
     ImGui::SetCurrentContext(prev);
+    if (boot_menu_wanted(a)) {  // before the first guest frame: the game waits behind the menu
+        g_boot_menu_done = true;
+        g_ov->boot_open = true;
+        request_open(true);
+    }
     return 1;
 }
 
@@ -269,7 +305,34 @@ extern "C" int recomp_overlay_handle_event(const void* ev) {
         if ((o.pad_held & o.combo) == o.combo) toggle = true;
     }
     if (e.type == SDL_EVENT_GAMEPAD_BUTTON_UP) o.pad_held &= ~(1u << e.gbutton.button);
+    if (o.select_menu && (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN || e.type == SDL_EVENT_GAMEPAD_BUTTON_UP)) {
+        const bool back = e.gbutton.button == SDL_GAMEPAD_BUTTON_BACK;
+        const bool down = e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+        if (o.select_hold.load()) {
+            if (down && !back) o.select_chord = true;  // a Select shortcut, not a tap
+            if (!down && back) {
+                o.select_hold = false;
+                if (!o.select_chord && !toggle && !is_open) request_open(true);
+                return 1;
+            }
+            if (toggle) o.select_hold = false;  // Start + Select: the combo opens it
+        } else if (back && down && !is_open && !toggle) {
+            o.select_hold = true;  // the game sees released pads from now on
+            o.select_chord = false;
+            return 1;
+        } else if (back && down && is_open && !toggle) {
+            // Select closes the menu (as B, in the frame); hold the game's
+            // pads until it is released so the game never sees it either.
+            o.select_hold = true;
+            o.select_chord = true;
+        }
+    }
     if (toggle) {
+        if (o.select_menu && is_open && e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
+            (o.pad_held & (1u << SDL_GAMEPAD_BUTTON_BACK))) {
+            o.select_hold = true;  // closed with Select held: keep it from the game until released
+            o.select_chord = true;
+        }
         request_open(!is_open);
         return 1;
     }
@@ -298,7 +361,9 @@ extern "C" int recomp_overlay_handle_event(const void* ev) {
     }
 }
 
-extern "C" int recomp_overlay_is_open(void) { return g_ov && g_ov->open.load(); }
+// Open, or holding Select for a tap (launcher.select_menu): either way the
+// host keeps the game's pads released.
+extern "C" int recomp_overlay_is_open(void) { return g_ov && (g_ov->open.load() || g_ov->select_hold.load()); }
 extern "C" void recomp_overlay_set_open(int open) {
     if (g_ov) request_open(open != 0);
 }

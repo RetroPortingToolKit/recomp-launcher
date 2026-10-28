@@ -277,6 +277,20 @@ One menu system with two entry points:
 and is not delivered to games; with Steam Input, bind it to Guide or to the
 combo.
 
+Two per-title opt-ins (surface keys, off by default):
+- `launcher.select_menu`: a Select (Back) tap opens the menu, for titles that
+  have no use for Select on its own. The game never sees that press: while
+  Select is held the overlay reports itself open, so the host hands the game
+  released pads. Another button during the hold makes it a chord (the host's
+  Select + button shortcuts), and the release then opens nothing. In the menu,
+  Select acts as B; the game does not see that press either.
+- `launcher.boot_menu`: the menu opens at boot, before the first guest frame,
+  with Resume focused; Resume starts the game. It stays closed when the run
+  skipped the launcher (`skip_launcher` from the host: `--no-launcher`,
+  `[launcher] skip_launcher`, `PSX_NO_LAUNCHER`, Game Mode), after a
+  restart-only relaunch from the menu, and for later sessions of the same
+  process.
+
 **While open:**
 - **Rail:** Resume, Graphics, Controls, Mods, About, Quit game. B or Esc resumes.
 - **Pause:** it asks the host to pause emulation and audio; on resume it

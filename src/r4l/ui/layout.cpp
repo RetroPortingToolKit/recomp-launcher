@@ -173,7 +173,8 @@ void App::frame() {
             sk.play("confirm");
             request_launch();
         }
-        if (overlay && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) &&
+        if (overlay && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+                        (pad_back_closes && ImGui::IsKeyPressed(ImGuiKey_GamepadBack, false))) &&
             !ImGui::IsAnyItemActive()) {
             sk.play("back");
             overlay_open = false;

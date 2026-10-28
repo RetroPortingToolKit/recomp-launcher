@@ -89,6 +89,7 @@ struct App {
     Screen focus_request = Screen::Count;  // move nav focus once
     bool content_focus = false;                // Right from the rail: focus the page's first control
     bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
+    bool pad_back_closes = false;              // launcher.select_menu: Select acts as B in the menu
     Capture capture;
     Job job;
     double time = 0;

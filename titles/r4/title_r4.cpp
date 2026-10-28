@@ -65,9 +65,15 @@ const SurfaceRule kSurface[] = {
     {"controls.assist", Vis::Hidden, nullptr},
     // Disc: found automatically; OpenBIOS is bundled, so no BIOS prompt.
     {"disc.autoscan", Vis::Auto, "auto"},
-    // The game boots straight in; setup, netplay and options are in the
-    // in-game menu (Esc / Guide / Start+Select).
+    // No pre-game launcher window; setup, netplay and options are in the
+    // in-game menu (Esc / Guide / Select / Start+Select).
     {"launcher.in_game", Vis::Auto, "auto"},
+    // The menu is the first screen; Resume starts the race (owner,
+    // 2026-10-27). Select alone opens it: R4 has no use for Select on its
+    // own that the menu would take away (owner, 2026-10-28). Select chords
+    // (Select + Y rewind and the other shortcuts) still work.
+    {"launcher.boot_menu", Vis::Auto, "auto"},
+    {"launcher.select_menu", Vis::Auto, "auto"},
     {"disc.toolchain", Vis::Hidden, nullptr},
     {"bios.select", Vis::Hidden, nullptr},
     // Settings page: volume only; memory cards use the default cards.

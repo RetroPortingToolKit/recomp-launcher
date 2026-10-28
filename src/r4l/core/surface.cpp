@@ -12,6 +12,8 @@ const std::vector<Capability>& capabilities() {
     static const std::vector<Capability> k = {
         // ---- Launcher
         {"launcher.in_game", false, "Launcher", "Boot into the game; launcher pages live in the in-game menu", -1},
+        {"launcher.boot_menu", false, "Launcher", "In-game menu open at boot; Resume starts the game", -1},
+        {"launcher.select_menu", false, "Launcher", "A Select (Back) tap opens the in-game menu", -1},
         // ---- Disc / first run
         {"disc.setup", true, "Disc", "Disc setup (pick, verify)", -1},
         {"disc.autoscan", true, "Disc", "Find the disc automatically", -1},

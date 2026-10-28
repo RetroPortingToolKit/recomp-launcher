@@ -214,6 +214,33 @@ void Script::step(App& app, Platform& plat) {
             scrolls_ = 0;
             const ImVec2 c = it->second.GetCenter();
             lines_.insert(lines_.begin() + static_cast<long>(pc_), "click " + std::to_string(c.x) + " " + std::to_string(c.y));
+        } else if (op == "paddown" || op == "padup") {  // one edge: holds and chords
+            SDL_zero(e);
+            e.type = op == "paddown" ? SDL_EVENT_GAMEPAD_BUTTON_DOWN : SDL_EVENT_GAMEPAD_BUTTON_UP;
+            e.gbutton.button = static_cast<Uint8>(SDL_GetGamepadButtonFromString(rest.c_str()));
+            e.gbutton.down = op == "paddown";
+            SDL_PushEvent(&e);
+            wait_ = 2;
+            return;
+        } else if (op == "expect") {  // expect <volume|sound|fullscreen|disc_verified|disc_verdict> <int>
+            std::istringstream a(rest);
+            std::string what;
+            int want = 0, got = -1;
+            a >> what >> want;
+            if (app.s.io && what == "volume") got = app.s.io->volume;
+            else if (app.s.io && what == "sound") got = app.s.io->enable_audio;
+            else if (app.s.io && what == "fullscreen") got = app.s.io->fullscreen;
+            else if (what == "disc_verified") got = app.s.discs[0].verified ? 1 : 0;
+            else if (what == "disc_verdict") got = app.s.discs[0].verify.verdict;
+            const bool ok = got == want;
+            std::fprintf(stderr, "[r4l-script] %s expect %s %d (now %d)\n", ok ? "PASS" : "FAIL", what.c_str(), want, got);
+            if (!ok) ++failures_;
+        } else if (op == "open") {  // assert the in-game menu is (1) or is not (0) open
+            const bool want = std::atoi(rest.c_str()) != 0;
+            const bool ok = app.overlay_open == want;
+            std::fprintf(stderr, "[r4l-script] %s open %d (now %d)\n", ok ? "PASS" : "FAIL", want ? 1 : 0,
+                         app.overlay_open ? 1 : 0);
+            if (!ok) ++failures_;
         } else if (op == "pad") {  // gamepad button by SDL name (a, b, back, start, leftshoulder...)
             const SDL_GamepadButton b = SDL_GetGamepadButtonFromString(rest.c_str());
             for (int down = 1; down >= 0; --down) {
