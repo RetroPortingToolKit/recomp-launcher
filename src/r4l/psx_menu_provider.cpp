@@ -52,10 +52,26 @@ int oh_disc_mounted(void*) { return g_host && g_host->disc_mounted ? g_host->dis
 const char* oh_disc_path(void*, int n) { return g_host && g_host->disc_path ? g_host->disc_path(n) : nullptr; }
 int oh_disc_insert(void*, int n) { return g_host && g_host->disc_insert ? g_host->disc_insert(n) : -1; }
 
+#if defined(PSX_MENU_HOST_HAS_SAVE_STATES)
+int oh_state_slot_count(void*) { return g_host && g_host->state_slot_count ? g_host->state_slot_count() : 0; }
+int oh_state_available(void*) { return g_host && g_host->state_available ? g_host->state_available() : 0; }
+int oh_state_info(void*, int n, long long* t) { return g_host && g_host->state_info ? g_host->state_info(n, t) : 0; }
+int oh_state_thumb(void*, int n, unsigned* px, int w, int h) {
+    return g_host && g_host->state_thumb ? g_host->state_thumb(n, px, w, h) : 0;
+}
+int oh_state_save(void*, int n) { return g_host && g_host->state_save ? g_host->state_save(n) : 0; }
+int oh_state_load(void*, int n) { return g_host && g_host->state_load ? g_host->state_load(n) : 0; }
+#endif
+
 const RecompOverlayHost g_overlay_host = {
     RECOMP_OVERLAY_ABI_VERSION, nullptr, oh_set_paused, oh_netplay_active, oh_apply_settings,
     oh_mod_set, oh_reload_bindings, oh_request_exit,
     oh_disc_count, oh_disc_mounted, oh_disc_path, oh_disc_insert,
+#if defined(PSX_MENU_HOST_HAS_SAVE_STATES)
+    oh_state_slot_count, oh_state_available, oh_state_info, oh_state_thumb, oh_state_save, oh_state_load,
+#else
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+#endif
 };
 
 int p_attach(void*, void* window, void* gl, const PsxMenuHost* host) {

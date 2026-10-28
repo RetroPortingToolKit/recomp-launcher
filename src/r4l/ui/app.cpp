@@ -42,6 +42,11 @@ const char* screen_name(Screen s) {
     case Screen::System: return "Settings";
     case Screen::Resume: return "Resume";
     case Screen::QuitGame: return "Quit game";
+    case Screen::Main: return "Main";
+    case Screen::Options: return "Options";
+    case Screen::Back: return "Back";
+    case Screen::SaveState: return "Save State";
+    case Screen::LoadState: return "Load State";
     default: return "";
     }
 }

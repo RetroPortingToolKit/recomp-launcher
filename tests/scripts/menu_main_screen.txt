@@ -1,0 +1,53 @@
+# In-game menu main screen (launcher.main_screen), opened at boot: Start
+# Game, Load State (no Save State before the game ran), Options, Quit game.
+wait 6
+open 1
+seen nav:Start Game
+seen nav:Load State
+unseen nav:Save State
+seen nav:Options
+seen nav:Quit game
+unseen nav:Graphics
+focused nav:Start Game
+# Options: the pages behind Back.
+tap nav:Options
+wait 4
+seen nav:Back
+seen nav:Graphics
+seen nav:Controls
+unseen nav:Start Game
+focused nav:Back
+# Back returns to the main screen, focus on Options...
+tap nav:Back
+wait 4
+seen nav:Start Game
+focused nav:Options
+# ... and so does Esc from an Options page.
+tap nav:Options
+wait 4
+key Escape
+wait 4
+open 1
+seen nav:Start Game
+# Start Game closes the menu; reopened, it reads Resume Game.
+tap nav:Start Game
+wait 4
+open 0
+key Escape
+wait 6
+open 1
+seen nav:Resume Game
+seen nav:Save State
+# Select (launcher.select_menu) goes back from Options too.
+tap nav:Options
+wait 4
+pad back
+wait 4
+seen nav:Resume Game
+open 1
+tap nav:Quit game
+wait 4
+seen quit:no
+key Escape
+wait 4
+open 1

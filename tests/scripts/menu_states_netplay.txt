@@ -1,0 +1,6 @@
+# During netplay the main screen has no save states.
+wait 6
+open 1
+seen nav:Options
+unseen nav:Save State
+unseen nav:Load State

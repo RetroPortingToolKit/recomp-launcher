@@ -74,6 +74,10 @@ const SurfaceRule kSurface[] = {
     // (Select + Y rewind and the other shortcuts) still work.
     {"launcher.boot_menu", Vis::Auto, "auto"},
     {"launcher.select_menu", Vis::Auto, "auto"},
+    // The menu opens on a main screen: Start Game / Resume Game, Save State,
+    // Load State, Options (the other pages, with Back), Quit game; a first
+    // run with no disc offers Select Disc only (owner, 2026-10-28).
+    {"launcher.main_screen", Vis::Auto, "auto"},
     {"disc.toolchain", Vis::Hidden, nullptr},
     {"bios.select", Vis::Hidden, nullptr},
     // Settings page: volume only; memory cards use the default cards.

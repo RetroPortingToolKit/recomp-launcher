@@ -71,4 +71,24 @@ if(Python3_FOUND)
         ENVIRONMENT "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SURFACE=all;R4L_SCREEN=About;R4L_SIZE=1280x720;R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/about_wheel.txt"
         PASS_REGULAR_EXPRESSION "failures=0"
         FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+    # In-game menu main screen (launcher.main_screen): Start/Resume Game,
+    # save states, Options with Back, Quit; first run with no disc: Select Disc.
+    set(_r4l_menu_env "SDL_AUDIODRIVER=dummy;R4L_HIDDEN=1;R4L_SKIN=r4;R4L_SIZE=1280x720;R4L_NO_SOUND=1;R4L_NO_TRANSITION=1;R4L_NO_AUTOSCAN=1")
+    foreach(_t menu_main_screen menu_states)
+        add_test(NAME r4l_${_t} COMMAND r4l-skin-render --run-overlay ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+        set_tests_properties(r4l_${_t} PROPERTIES
+            ENVIRONMENT "${_r4l_menu_env};R4L_FAKE_LOBBY=0;R4L_OVERLAY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/${_t}.txt"
+            PASS_REGULAR_EXPRESSION "failures=0"
+            FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+    endforeach()
+    add_test(NAME r4l_menu_states_netplay COMMAND r4l-skin-render --run-overlay ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_menu_states_netplay PROPERTIES
+        ENVIRONMENT "${_r4l_menu_env};R4L_FAKE_LOBBY=1;R4L_OVERLAY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/menu_states_netplay.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
+    add_test(NAME r4l_menu_no_disc COMMAND r4l-skin-render --run ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    set_tests_properties(r4l_menu_no_disc PROPERTIES
+        ENVIRONMENT "${_r4l_menu_env};R4L_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/tests/scripts/menu_no_disc.txt"
+        PASS_REGULAR_EXPRESSION "failures=0"
+        FAIL_REGULAR_EXPRESSION "\[r4l-script\] FAIL")
 endif()

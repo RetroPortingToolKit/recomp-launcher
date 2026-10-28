@@ -17,6 +17,8 @@
 #include <vector>
 
 extern "C" int r4l_abi_symbols_present(void);
+extern "C" int r4l_run_overlay_script(int w, int h, const RecompLauncherCGameInfo* game, RecompLauncherCSettings* io,
+                                      const RecompOverlayHost* host, const char* assets_dir, int max_frames);
 extern "C" int r4l_render_overlay_png(const char* path, int w, int h, const RecompLauncherCGameInfo* game,
                                       RecompLauncherCSettings* io, const RecompOverlayHost* host,
                                       const char* assets_dir, const char* screen);
@@ -327,6 +329,43 @@ int main(int argc, char** argv) {
             fail |= !f;
         }
         return fail;
+    }
+    if (argc > 1 && !std::strcmp(argv[1], "--run-overlay")) {  // the in-game menu (R4L_OVERLAY_SCRIPT drives it)
+        // Save states: 12 slots, slot 1 used; save marks a slot used, load
+        // needs a used slot. R4L_FAKE_LOBBY=1 = netplay (states refused).
+        static long long slots[12] = {1761600000};
+        RecompOverlayHost host{};
+        host.abi_version = RECOMP_OVERLAY_ABI_VERSION;
+        host.set_paused = [](void*, int) { return lobby() ? 0 : 1; };
+        host.netplay_active = [](void*) { return lobby() ? 1 : 0; };
+        host.state_slot_count = [](void*) { return 12; };
+        host.state_available = [](void*) { return lobby() ? 0 : 1; };
+        host.state_info = [](void*, int n, long long* t) {
+            if (n < 0 || n >= 12 || !slots[n]) return 0;
+            if (t) *t = slots[n];
+            return 1;
+        };
+        host.state_thumb = [](void*, int n, unsigned* px, int w, int h) {
+            for (int i = 0; i < w * h; ++i) px[i] = 0xff000000u | (static_cast<unsigned>(n * 20) << 16) | ((i % w) * 2);
+            return 1;
+        };
+        host.state_save = [](void*, int n) {
+            if (n < 0 || n >= 12 || lobby()) return 0;
+            slots[n] = 1761700000 + n;
+            std::fprintf(stderr, "fake-host: save slot %d\n", n + 1);
+            return 1;
+        };
+        host.state_load = [](void*, int n) {
+            if (n < 0 || n >= 12 || lobby() || !slots[n]) return 0;
+            std::fprintf(stderr, "fake-host: load slot %d\n", n + 1);
+            return 1;
+        };
+        int w = 1280, h = 720;
+        if (const char* sz = std::getenv("R4L_SIZE")) std::sscanf(sz, "%dx%d", &w, &h);
+        RecompLauncherCSettings o = s;
+        const int fails = r4l_run_overlay_script(w, h, &gi, &o, &host, argc > 2 ? argv[2] : "assets", 6000);
+        std::printf("overlay run failures=%d\n", fails);
+        return fails == 0 ? 0 : 1;
     }
     if (argc > 1 && !std::strcmp(argv[1], "--run")) {  // one launcher session (R4L_SCRIPT drives it)
         const int rc = recomp_launcher_run_window("R4", &s, &gi, argc > 2 ? argv[2] : "assets", "", out, sizeof out);

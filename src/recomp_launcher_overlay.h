@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-#define RECOMP_OVERLAY_ABI_VERSION 2  /* 2: disc_* (the runtime tray policy) */
+#define RECOMP_OVERLAY_ABI_VERSION 3  /* 2: disc_* (the runtime tray policy); 3: state_* */
 
 /* Bits returned by apply_settings: which edits only take effect after a
  * restart (the overlay labels those rows). */
@@ -55,6 +55,17 @@ typedef struct RecompOverlayHost {
     int  (*disc_mounted)(void* ctx);              /* 1-based, 0 = none */
     const char* (*disc_path)(void* ctx, int disc_1based);
     int  (*disc_insert)(void* ctx, int disc_1based);
+    /* v3: save-state slots (0-based). slot_count is 0 without save states;
+     * available is 0 while the runtime refuses them (netplay). info returns
+     * 1 when the slot holds a state (*mtime: Unix seconds); thumb fills w*h
+     * ARGB pixels (1 = had one). save/load queue the request (1 = queued);
+     * it runs once the game resumes, so the menu closes after asking. */
+    int  (*state_slot_count)(void* ctx);
+    int  (*state_available)(void* ctx);
+    int  (*state_info)(void* ctx, int slot, long long* mtime);
+    int  (*state_thumb)(void* ctx, int slot, unsigned* argb, int w, int h);
+    int  (*state_save)(void* ctx, int slot);
+    int  (*state_load)(void* ctx, int slot);
 } RecompOverlayHost;
 
 /* Call once on the GL thread with the runtime's window and current context. */

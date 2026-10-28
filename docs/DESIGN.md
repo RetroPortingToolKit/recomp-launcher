@@ -277,7 +277,15 @@ One menu system with two entry points:
 and is not delivered to games; with Steam Input, bind it to Guide or to the
 combo.
 
-Two per-title opt-ins (surface keys, off by default):
+Per-title opt-ins (surface keys, off by default):
+- `launcher.main_screen`: the menu opens on a main screen instead of the page
+  rail: Start Game (boot menu, before the game ran) or Resume Game, Save
+  State and Load State (host v3 `state_*`; hidden in netplay, Save hidden
+  before the game started), Options, Quit game. Options shows the other pages
+  with Back on top; B, Esc and Select (with `launcher.select_menu`) go back
+  too. Save or Load queues the request and closes the menu: it runs as the
+  game resumes. In a first run with no disc the launcher shows only Select
+  Disc (disc setup).
 - `launcher.select_menu`: a Select (Back) tap opens the menu, for titles that
   have no use for Select on its own. The game never sees that press: while
   Select is held the overlay reports itself open, so the host hands the game

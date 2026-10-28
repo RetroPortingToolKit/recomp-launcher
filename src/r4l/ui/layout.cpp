@@ -30,6 +30,11 @@ const char* skin_key(Screen s) {
     case Screen::Resume: return "Resume";
     case Screen::QuitGame: return "Quit";
     case Screen::System: return "System";
+    case Screen::Main: return "Main";
+    case Screen::Options: return "Options";
+    case Screen::Back: return "Back";
+    case Screen::SaveState: return "SaveState";
+    case Screen::LoadState: return "LoadState";
     default: return "";
     }
 }
@@ -118,12 +123,31 @@ void App::frame() {
     if (!overlay && s.game && s.game->netplay && s.game->netplay->pump) s.game->netplay->pump(s.game->netplay->ctx);
     if (overlay) overlay_tick();
 
+    // launcher.main_screen: the in-game menu opens on a main screen (Start or
+    // Resume Game, save states, Options, Quit); Options shows the pages
+    // behind a Back entry. A first run with no disc offers Select Disc only.
+    main_screen = surf.automatic("launcher.main_screen");
+    const bool main_rail = main_screen && overlay && !options_open;
+    if (main_screen && overlay && !options_open && screen != Screen::Main && screen != Screen::SaveState &&
+        screen != Screen::LoadState)
+        options_open = true;  // a page was asked for directly (script, deep link)
+    if (main_rail && !states_allowed() && (screen == Screen::SaveState || screen == Screen::LoadState))
+        screen = Screen::Main;
     // The rail lists only pages the title's surface manifest leaves something on.
     std::vector<Screen> navv;
-    if (overlay) navv.push_back(Screen::Resume);
+    if (main_rail) {
+        navv.push_back(Screen::Resume);
+        if (states_allowed()) {
+            if (game_started) navv.push_back(Screen::SaveState);
+            navv.push_back(Screen::LoadState);
+        }
+        navv.push_back(Screen::Options);
+    } else if (main_screen && overlay) navv.push_back(Screen::Back);
+    else if (overlay) navv.push_back(Screen::Resume);
     else if (setup_only) navv.push_back(Screen::Setup);  // in-game first run: setup, then play
     else navv.push_back(Screen::Home);
-    if (setup_only) {
+    if (main_rail) {
+    } else if (setup_only) {
         // The game starts as soon as the disc checks out.
         if (s.media_ready() && !job.running) request_launch();
     } else if (surf.any_shown("graphics.")) navv.push_back(Screen::Graphics);
@@ -134,8 +158,11 @@ void App::frame() {
     if (!setup_only && (surf.any_shown("audio.") || surf.any_shown("system.") || S("bios.select")))
         navv.push_back(Screen::System);
     if (overlay && in_game && !netplay_locked && S("disc.setup")) navv.push_back(Screen::Setup);
-    if (surf.any_shown("about.")) navv.push_back(Screen::About);
-    if (overlay) navv.push_back(Screen::QuitGame);
+    if (main_rail) {
+    } else if (setup_only && main_screen) {
+        navv.resize(1);  // Select Disc is the only entry
+    } else if (surf.any_shown("about.")) navv.push_back(Screen::About);
+    if (overlay && (main_rail || !main_screen)) navv.push_back(Screen::QuitGame);
     const Screen* nav = navv.data();
     const int nav_n = static_cast<int>(navv.size());
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -161,8 +188,14 @@ void App::frame() {
         int idx = 0;
         for (int i = 0; i < nav_n; ++i)
             if (nav[i] == screen) idx = i;
+        auto action = [](Screen sc) {  // rail entries that act instead of showing a page
+            return sc == Screen::Resume || sc == Screen::QuitGame || sc == Screen::Options || sc == Screen::Back;
+        };
+        int pages = 0;
+        for (int i = 0; i < nav_n; ++i) pages += action(nav[i]) ? 0 : 1;
         auto go = [&](int d) {
-            do idx = (idx + nav_n + d) % nav_n; while (nav[idx] == Screen::Resume || nav[idx] == Screen::QuitGame);
+            if (!pages) return;
+            do idx = (idx + nav_n + d) % nav_n; while (action(nav[idx]));
             screen = nav[idx];
             focus_request = screen;
             sk.play("move");
@@ -177,7 +210,8 @@ void App::frame() {
                         (pad_back_closes && ImGui::IsKeyPressed(ImGuiKey_GamepadBack, false))) &&
             !ImGui::IsAnyItemActive()) {
             sk.play("back");
-            overlay_open = false;
+            if (main_screen && options_open) open_options(false);  // Options: back to the main screen
+            else overlay_open = false;
         }
     }
 
@@ -248,6 +282,8 @@ void App::frame() {
             sk.play("confirm");
             if (sc == Screen::Resume) overlay_open = false;
             else if (sc == Screen::QuitGame) quit_confirm = true;
+            else if (sc == Screen::Options) open_options(true);
+            else if (sc == Screen::Back) open_options(false);
             else
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
         }
@@ -256,7 +292,8 @@ void App::frame() {
         // finds a candidate that overlaps the rail item vertically, so from a
         // lower item Right did nothing; hand the focus to the page's first
         // control instead (SetKeyboardFocusHere after the content child opens).
-        if (ImGui::IsItemFocused() && sc != Screen::Resume && sc != Screen::QuitGame &&
+        if (ImGui::IsItemFocused() && sc != Screen::Resume && sc != Screen::QuitGame && sc != Screen::Options &&
+            sc != Screen::Back &&
             (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight, false) ||
              ImGui::IsKeyPressed(ImGuiKey_GamepadLStickRight, false))) {
             ImGui::NavMoveRequestCancel();
@@ -264,10 +301,10 @@ void App::frame() {
             content_focus = true;
         }
         const bool hov = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && ImGui::GetIO().NavVisible);
-        {
-            std::string nl = tr((sc == Screen::Home && setup_mode) ? "Disc setup" : screen_name(sc));
-            script_mark(("nav:" + nl).c_str());
-        }
+        std::string base = tr((sc == Screen::Home && setup_mode) ? "Disc setup" : screen_name(sc));
+        if (main_screen && sc == Screen::Resume) base = tr(game_started ? "Resume Game" : "Start Game");
+        if (main_screen && setup_only && sc == Screen::Setup) base = tr("Select Disc");
+        script_mark(("nav:" + base).c_str());
         if (hov && last_nav_hover != i) {
             if (last_nav_hover >= 0) sk.play("move");
             last_nav_hover = i;
@@ -283,10 +320,10 @@ void App::frame() {
             else dl->AddRectFilled(a, b, u32(theme().surface_hi), 8);
         }
         if (sel && sk.loaded()) sk.draw_cursor(dl, a, b);
-        std::string label = tr((sc == Screen::Home && setup_mode) ? "Disc setup" : screen_name(sc));
-        if (sc == Screen::Resume) label = tr("Resume");
-        if (sc == Screen::QuitGame) label = tr("Quit game");
-        label = sk.label(std::string("nav.") + skin_key(sc), label);
+        std::string label = base;
+        if (main_screen && sc == Screen::Resume) label = sk.label(game_started ? "nav.ResumeGame" : "nav.StartGame", label);
+        else if (main_screen && setup_only && sc == Screen::Setup) label = sk.label("nav.SelectDisc", label);
+        else label = sk.label(std::string("nav.") + skin_key(sc), label);
         const ImVec4 col = (sel || hov) ? sk.color("nav_selected", theme().text) : sk.color("nav", theme().text_dim);
         if (sk.loaded()) {
             const ImVec2 ts = sk.text_size("nav", label);
@@ -302,7 +339,7 @@ void App::frame() {
         ImGui::Dummy(ImVec2(0, 0));
         ImGui::PopID();
     }
-    if (!overlay) {
+    if (!overlay && !(main_screen && setup_only)) {
         const Rect pb = sk.rect("play_button", Rect{rail.x + 16 * u, rail.y + rail.h - 84 * u, rail.w - 32 * u, 56 * u});
         ImGui::SetCursorScreenPos(iv(pb.x, pb.y));
         const bool ready = s.media_ready();
@@ -357,6 +394,9 @@ void App::frame() {
     case Screen::Setup: draw_setup(); break;
     case Screen::About: draw_about(); break;
     case Screen::System: draw_system(); break;
+    case Screen::Main: draw_main(); break;
+    case Screen::SaveState: draw_states(true); break;
+    case Screen::LoadState: draw_states(false); break;
     default: break;
     }
     screen_body_end();
@@ -383,7 +423,7 @@ void App::frame() {
     };
     if (!s.status.empty()) ftxt(s.status, theme().warn);
     ftxt(sk.label(overlay ? "footer.overlay" : "footer.hints",
-                  overlay ? "A Select    B Resume    LB/RB Switch page" : "A Select    B Back    LB/RB Switch page    START Play"),
+                  overlay ? (main_screen && options_open ? "A Select    B Back    LB/RB Switch page" : "A Select    B Resume    LB/RB Switch page") : "A Select    B Back    LB/RB Switch page    START Play"),
          theme().text_dim);
     if (overlay && netplay_locked) ftxt("Netplay: the race keeps running", theme().warn);
     if (!overlay && game_mode) ftxt("Game Mode: next launch boots straight into the race", theme().text_dim);

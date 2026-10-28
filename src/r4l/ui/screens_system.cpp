@@ -12,6 +12,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <cstdio>
@@ -341,6 +342,132 @@ void App::draw_system() {
             if (ImGui::Button(tr("Cancel"))) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
+    }
+}
+
+}  // namespace r4l
+
+// ---------------------------------------------------------------- main screen
+
+#include "recomp_launcher_overlay.h"
+#include <SDL3/SDL_opengl.h>
+#include <ctime>
+
+namespace r4l {
+
+bool App::states_supported() const {
+    return mode == Mode::Overlay && host && host->abi_version >= 3 && host->state_slot_count &&
+           host->state_slot_count(host->ctx) > 0;
+}
+
+bool App::states_allowed() const {
+    return states_supported() && !netplay_locked && host->state_available && host->state_available(host->ctx);
+}
+
+void App::open_options(bool open) {
+    options_open = open;
+    if (open) {
+        screen = surf.any_shown("graphics.") ? Screen::Graphics : surf.any_shown("controls.") ? Screen::Controls : Screen::System;
+        focus_request = Screen::Back;
+    } else {
+        screen = Screen::Main;
+        focus_request = Screen::Options;
+    }
+}
+
+void App::draw_main() {
+    const char* name = s.game && s.game->name ? s.game->name : "";
+    screen_title(name, tr(game_started ? "Paused" : "Ready to start"));
+    ImGui::Dummy(ImVec2(0, 8));
+    ImGui::PushStyleColor(ImGuiCol_Text, theme().text_dim);
+    ImGui::TextWrapped("%s", tr(game_started ? "Resume Game returns to the race. Options holds display, controls, garage, netplay and settings."
+                                             : "Start Game boots the race. Options holds display, controls, garage, netplay and settings."));
+    if (netplay_locked) ImGui::TextWrapped("%s", tr("Save states are unavailable during netplay."));
+    ImGui::PopStyleColor();
+}
+
+// Save State / Load State: the runtime's slots (overlay host v3). Picking a
+// slot queues the request and closes the menu; it runs as the game resumes.
+void App::draw_states(bool save) {
+    screen_title(tr(save ? "Save State" : "Load State"),
+                 tr(save ? "Pick a slot to save to. The menu closes and the game saves as it resumes."
+                         : "Pick a slot to load. The menu closes and the game resumes from it."));
+    if (!states_allowed()) {
+        ImGui::TextDisabled("%s", tr("Save states are unavailable right now (netplay)."));
+        return;
+    }
+    const int n = std::min(host->state_slot_count(host->ctx), 32);
+    if (static_cast<int>(states.size()) != n) states.assign(n, StateSlot{});
+    if (time - states_polled > 1.0) {  // slot files change only through us or the hotkey menu
+        states_polled = time;
+        for (int i = 0; i < n; ++i) {
+            long long t = 0;
+            states[i].used = host->state_info && host->state_info(host->ctx, i, &t);
+            states[i].mtime = states[i].used ? t : 0;
+        }
+    }
+    const float u = ui_scale > 0 ? ui_scale : 1.0f;
+    const float th = 60 * u, tw = th * 4 / 3, row = th + 12 * u;
+    for (int i = 0; i < n; ++i) {
+        StateSlot& sl = states[i];
+        // Thumbnail (128x96 ARGB from the runtime) as a GL texture, refreshed when the slot changes.
+        if (sl.used && sl.tex_mtime != sl.mtime && host->state_thumb) {
+            static unsigned px[128 * 96];
+            sl.tex_mtime = sl.mtime;
+            if (host->state_thumb(host->ctx, i, px, 128, 96)) {
+                static unsigned char rgba[128 * 96 * 4];
+                for (int k = 0; k < 128 * 96; ++k) {
+                    rgba[k * 4 + 0] = static_cast<unsigned char>(px[k] >> 16);
+                    rgba[k * 4 + 1] = static_cast<unsigned char>(px[k] >> 8);
+                    rgba[k * 4 + 2] = static_cast<unsigned char>(px[k]);
+                    rgba[k * 4 + 3] = 255;
+                }
+                GLuint id = sl.tex;
+                if (!id) glGenTextures(1, &id);
+                glBindTexture(GL_TEXTURE_2D, id);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 96, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+                sl.tex = id;
+            }
+        }
+        char label[96];
+        if (sl.used && sl.mtime > 0) {
+            std::time_t t = static_cast<std::time_t>(sl.mtime);
+            char when[48] = "";
+            if (const std::tm* lt = std::localtime(&t)) std::strftime(when, sizeof when, "%Y-%m-%d  %H:%M", lt);
+            std::snprintf(label, sizeof label, "%s %d    %s", tr("Slot"), i + 1, when);
+        } else {
+            std::snprintf(label, sizeof label, "%s %d    %s", tr("Slot"), i + 1, sl.used ? "" : tr("Empty"));
+        }
+        ImGui::PushID(i);
+        const bool enabled = save || sl.used;
+        ImGui::BeginDisabled(!enabled);
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const bool hit = ImGui::Selectable("##slot", states_slot == i, 0, ImVec2(0, row));
+        ImGui::EndDisabled();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImVec2 a(p.x + 6 * u, p.y + 6 * u), b(a.x + tw, a.y + th);
+        if (sl.tex) dl->AddImage(static_cast<ImTextureID>(sl.tex), a, b);
+        else dl->AddRectFilled(a, b, ImGui::ColorConvertFloat4ToU32(theme().surface_hi), 4);
+        dl->AddText(ImVec2(b.x + 16 * u, p.y + (row - ImGui::GetFontSize()) * 0.5f),
+                    ImGui::ColorConvertFloat4ToU32(enabled ? theme().text : theme().text_dim), label);
+        script_mark((std::string(save ? "save:" : "load:") + std::to_string(i + 1)).c_str());
+        if (hit && enabled) {
+            states_slot = i;
+            const int ok = save ? (host->state_save && host->state_save(host->ctx, i))
+                                : (host->state_load && host->state_load(host->ctx, i));
+            if (ok) {
+                skin().play("confirm");
+                states_polled = -100;
+                std::fprintf(stdout, "r4l: %s slot %d queued\n", save ? "save" : "load", i + 1);
+                overlay_open = false;  // the request runs as the game resumes
+            } else {
+                s.status = tr(save ? "Could not save to that slot." : "Could not load that slot.");
+            }
+        }
+        ImGui::PopID();
     }
 }
 

@@ -181,9 +181,18 @@ void apply_transitions(Overlay& o) {
     if (o.opening.exchange(false)) {
         a.netplay_locked = o.host && o.host->netplay_active && o.host->netplay_active(o.host->ctx);
         a.overlay_open = true;
-        a.screen = Screen::Graphics;
-        // At boot the first press is Resume, which starts the game.
-        a.focus_request = o.boot_open ? Screen::Resume : Screen::Graphics;
+        if (a.surf.automatic("launcher.main_screen")) {
+            // The main screen: Start Game at boot (the game waits behind
+            // the menu), Resume Game later; Options holds the pages.
+            if (o.boot_open) a.game_started = false;
+            a.options_open = false;
+            a.screen = Screen::Main;
+            a.focus_request = Screen::Resume;
+        } else {
+            a.screen = Screen::Graphics;
+            // At boot the first press is Resume, which starts the game.
+            a.focus_request = o.boot_open ? Screen::Resume : Screen::Graphics;
+        }
         o.boot_open = false;
         if (a.s.io) a.opened = a.applied = *a.s.io;
         o.disc_at_open = a.s.primary_disc();
@@ -196,6 +205,8 @@ void apply_transitions(Overlay& o) {
         if (a.s.binds_dirty == false && o.host && o.host->reload_bindings) o.host->reload_bindings(o.host->ctx);
         if (o.host && o.host->set_paused) o.host->set_paused(o.host->ctx, 0);
         a.overlay_open = false;
+        a.game_started = true;  // closing the boot menu starts the game
+        a.options_open = false;
         o.open = false;
         skin().play("back");
         // In-game launcher: edits that only take effect at start-up are
@@ -493,4 +504,36 @@ extern "C" int r4l_render_overlay_png(const char* path, int w, int h, const Reco
     recomp_overlay_shutdown();
     plat.close(false);
     return ok;
+}
+
+// Test helper (not ABI): runs the overlay over a blank hidden window until its
+// R4L_OVERLAY_SCRIPT finishes (or max_frames), feeding the script's events
+// through recomp_overlay_handle_event as a runtime would. Returns failures.
+extern "C" int r4l_run_overlay_script(int w, int h, const RecompLauncherCGameInfo* game, RecompLauncherCSettings* io,
+                                      const RecompOverlayHost* host, const char* assets_dir, int max_frames) {
+    Platform plat;
+    if (!plat.open("overlay", w, h, true, nullptr, assets_dir ? assets_dir : "assets")) return -1;
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+    recomp_overlay_init(plat.window, plat.gl, game, io, host, assets_dir);
+    int failures = -1;
+    for (int f = 0; f < max_frames && g_ov; ++f) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) recomp_overlay_handle_event(&e);
+        ImGui::SetCurrentContext(nullptr);
+        glViewport(0, 0, w, h);
+        glClearColor(0.2f, 0.3f, 0.5f, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        recomp_overlay_render(w, h);
+        SDL_GL_SwapWindow(plat.window);
+        if (!g_ov->script || g_ov->script_done) {
+            failures = g_ov->script ? g_ov->script->failures() : -1;
+            break;
+        }
+        SDL_Delay(1);
+    }
+    recomp_overlay_shutdown();
+    plat.close(false);
+    return failures;
 }

@@ -1,0 +1,7 @@
+# First run with no disc (launcher.main_screen): Select Disc is the only entry.
+wait 6
+seen nav:Select Disc
+unseen nav:Credits
+unseen nav:About
+unseen nav:Graphics
+quit

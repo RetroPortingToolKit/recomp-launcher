@@ -2,6 +2,7 @@
 // recomp-ui LNG_SCRIPT equivalent). One action per line:
 //   screen <Name> | click <x> <y> | wheel <x> <y> <steps> | key <Scancode> |
 //   text <utf8> | wait <frames> | sleep <seconds> | shot <png> | status <substring> | play | quit
+//   seen / unseen <label> | expect slotN <0|1> (overlay: save-state slot N holds a state) | ...
 // Coordinates are window points. `status` prints PASS/FAIL against the footer
 // status line. Results go to stderr as "[r4l-script] ...".
 #pragma once

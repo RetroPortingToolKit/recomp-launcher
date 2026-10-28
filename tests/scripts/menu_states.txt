@@ -1,0 +1,31 @@
+# Save State / Load State on the main screen: slot 1 holds a state, slot 3
+# is empty. Saving to 3 closes the menu and fills the slot; loading 3 closes
+# the menu (the game resumes from it).
+wait 6
+tap nav:Start Game
+wait 4
+open 0
+key Escape
+wait 6
+open 1
+tap nav:Load State
+wait 6
+seen load:1
+seen load:3
+expect slot3 0
+tap load:3
+wait 4
+open 1
+tap nav:Save State
+wait 6
+tap save:3
+wait 4
+open 0
+expect slot3 1
+key Escape
+wait 6
+tap nav:Load State
+wait 6
+tap load:3
+wait 4
+open 0

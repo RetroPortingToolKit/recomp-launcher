@@ -21,7 +21,13 @@ namespace r4l {
 
 struct App;
 
-enum class Screen { Home, Graphics, Mods, Controls, Netplay, Setup, About, Resume, QuitGame, System, Count };
+enum class Screen {
+    Home, Graphics, Mods, Controls, Netplay, Setup, About, Resume, QuitGame, System,
+    // launcher.main_screen (in-game menu): the main screen's page and its
+    // rail entries; Options opens the other pages behind a Back entry.
+    Main, Options, Back, SaveState, LoadState,
+    Count
+};
 enum class Mode { Launcher, Overlay };
 const char* screen_name(Screen s);
 
@@ -90,6 +96,18 @@ struct App {
     bool content_focus = false;                // Right from the rail: focus the page's first control
     bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
     bool pad_back_closes = false;              // launcher.select_menu: Select acts as B in the menu
+    bool main_screen = false;                  // launcher.main_screen: main screen + Options
+    bool options_open = false;                 // main screen: the Options pages are showing
+    bool game_started = true;                  // false while the boot menu holds the game
+    struct StateSlot {
+        bool used = false;
+        long long mtime = 0;
+        unsigned tex = 0;       // GL thumbnail, 0 = none
+        long long tex_mtime = -1;
+    };
+    std::vector<StateSlot> states;             // save-state slots (overlay host v3)
+    double states_polled = -100;
+    int states_slot = 0;                       // last slot picked
     Capture capture;
     Job job;
     double time = 0;
@@ -150,6 +168,11 @@ struct App {
     void draw_setup();
     void draw_about();
     void draw_system();     // audio, system, memory cards, BIOS, hotkeys
+    void draw_main();       // launcher.main_screen: the main screen's page
+    void draw_states(bool save);  // Save State / Load State slots
+    bool states_supported() const;  // the host has save-state slots
+    bool states_allowed() const;    // ... and allows them now (not netplay)
+    void open_options(bool open);   // main screen <-> Options
     void draw_memcards();
     void ensure_disc_assets();
     void autoscan_disc();

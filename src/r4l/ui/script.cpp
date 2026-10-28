@@ -1,4 +1,5 @@
 #include "script.h"
+#include "recomp_launcher_overlay.h"
 
 #include "platform.h"
 #include "ui.h"
@@ -232,6 +233,8 @@ void Script::step(App& app, Platform& plat) {
             else if (app.s.io && what == "fullscreen") got = app.s.io->fullscreen;
             else if (what == "disc_verified") got = app.s.discs[0].verified ? 1 : 0;
             else if (what == "disc_verdict") got = app.s.discs[0].verify.verdict;
+            else if (what.rfind("slot", 0) == 0 && app.host && app.host->abi_version >= 3 && app.host->state_info)
+                got = app.host->state_info(app.host->ctx, std::atoi(what.c_str() + 4) - 1, nullptr);  // slotN: 1 = holds a state
             const bool ok = got == want;
             std::fprintf(stderr, "[r4l-script] %s expect %s %d (now %d)\n", ok ? "PASS" : "FAIL", what.c_str(), want, got);
             if (!ok) ++failures_;
@@ -310,6 +313,10 @@ void Script::step(App& app, Platform& plat) {
                     if (kv.second == nav) std::fprintf(stderr, "  focus is on: %s\n", kv.first.c_str());
                 std::fprintf(stderr, "  nav id %08x\n", nav);
             }
+            if (!ok) ++failures_;
+        } else if (op == "unseen") {  // no item with this label was drawn last frame
+            const bool ok = g_prev.count(rest) == 0;
+            std::fprintf(stderr, "[r4l-script] %s unseen \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
             if (!ok) ++failures_;
         } else if (op == "seen") {  // an item with this label was drawn last frame
             const bool ok = g_prev.count(rest) != 0;

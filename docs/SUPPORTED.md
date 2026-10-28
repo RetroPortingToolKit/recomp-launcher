@@ -55,6 +55,7 @@ below is generated from the catalog (`tools/gen_supported.py`, checked by ctest)
 | `launcher.in_game` | Launcher | Boot into the game; launcher pages live in the in-game menu | Hidden | - |
 | `launcher.boot_menu` | Launcher | In-game menu open at boot; Resume starts the game | Hidden | - |
 | `launcher.select_menu` | Launcher | A Select (Back) tap opens the in-game menu | Hidden | - |
+| `launcher.main_screen` | Launcher | In-game menu main screen: Start/Resume, save states, Options, Quit | Hidden | - |
 | `disc.setup` | Disc | Disc setup (pick, verify) | Shown | - |
 | `disc.autoscan` | Disc | Find the disc automatically | Shown | - |
 | `disc.sbi` | Disc | Import SBI subchannel | Shown | - |
