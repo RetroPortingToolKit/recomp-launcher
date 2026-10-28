@@ -52,8 +52,10 @@ key Down
 key Down
 key Down
 key Down
+key Down
 wait 4
 visible Skin
+key Up
 key Up
 key Up
 key Up

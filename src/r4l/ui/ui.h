@@ -172,6 +172,11 @@ std::string patterns_of(const char* const* pats, int n, const char* fallback);
 void screen_body_end();  // closes the scrolling body screen_title opened
 void screen_title(const char* title, const char* sub = nullptr);
 bool section(const char* label);
+// Menu column: while active, the row_* widgets draw as centred "Label: Value"
+// boxes (x, w, h in pixels) instead of label-left / control-right rows.
+void kv_column_begin(float x, float w, float h);
+void kv_column_end();
+bool kv_column_active();
 bool row_combo(const char* label, int* v, const char* const* items, int count, const char* help = nullptr);
 bool row_toggle(const char* label, int* v, const char* help = nullptr);
 bool row_slider(const char* label, int* v, int lo, int hi, const char* fmt, const char* help = nullptr);

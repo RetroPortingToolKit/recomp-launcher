@@ -4,6 +4,7 @@
 #include "script.h"
 #include "recomp_launcher_overlay.h"
 #include "dialogs.h"
+#include "imgui_internal.h"  // NavMoveRequestCancel
 
 #include <dirent.h>
 #include <fstream>
@@ -133,15 +134,84 @@ float row_begin(const char* label, const char* help) {
         ImGui::SameLine();
         help_marker(help);
     }
-    const float cw = std::min(380.0f, w * 0.48f);
+    // The control keeps its size relative to the text: a fixed 380 px shrank
+    // to "W v" once the window (and with it the UI scale) grew.
+    const float u = std::max(1.0f, ImGui::GetStyle().FontScaleMain);
+    const float cw = std::min(380.0f * u, w * 0.48f);
     ImGui::SameLine(w - cw + ImGui::GetStyle().WindowPadding.x * 0.0f);
     ImGui::SetNextItemWidth(cw);
     return cw;
 }
+
+// Menu column (skins with stacked presets): every row is a centred
+// "Label: Value" box the width of the preset boxes. Left/Right (arrow keys,
+// d-pad, stick) step the value; click or A steps forward.
+struct KvColumn {
+    bool on = false;
+    float x = 0, w = 0, h = 0;
+} g_kv;
+
+bool kv_pressed_left() {
+    return ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft) ||
+           ImGui::IsKeyPressed(ImGuiKey_GamepadLStickLeft);
+}
+bool kv_pressed_right() {
+    return ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight) ||
+           ImGui::IsKeyPressed(ImGuiKey_GamepadLStickRight);
+}
+
+// Returns -1 (unchanged), or the step taken (+1 / -1) after drawing the row.
+int kv_row(const char* label, const std::string& value, const char* help) {
+    ImGui::SetCursorScreenPos(ImVec2(g_kv.x, ImGui::GetCursorScreenPos().y));
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const ImVec2 sz(g_kv.w, g_kv.h);
+    int step = 0;
+    if (ImGui::InvisibleButton("##kv", sz, ImGuiButtonFlags_EnableNav)) step = +1;
+    const bool focused = ImGui::IsItemFocused();
+    const bool hot = focused || ImGui::IsItemHovered();
+    if (focused && !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopup)) {
+        if (kv_pressed_left()) step = -1;
+        if (kv_pressed_right()) step = +1;
+        if (step) ImGui::NavMoveRequestCancel();  // the key changed the value, it does not move focus
+    }
+    if (help && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", help);
+    Skin& sk = skin();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec4 box = sk.has_color("preset_box") ? sk.color("preset_box", g_theme.surface_hi) : g_theme.surface_hi;
+    const ImVec4 txt = sk.has_color("preset_text") ? sk.color("preset_text", g_theme.text) : g_theme.text;
+    const float r = ImGui::GetStyle().FrameRounding;
+    dl->AddRectFilled(p, ImVec2(p.x + sz.x, p.y + sz.y), u32(box), r);
+    if (sk.loaded() && sk.model().palette.count("nav_item_border"))
+        dl->AddRect(p, ImVec2(p.x + sz.x, p.y + sz.y), u32(sk.color("nav_item_border", g_theme.line)), r);
+    if (hot) dl->AddRect(p, ImVec2(p.x + sz.x, p.y + sz.y), u32(g_theme.accent), r, 0, 2.0f);
+    ImGui::PushFont(g_theme.bold, 0.0f);
+    const std::string line = std::string(label) + ": " + value;
+    const ImVec2 ts = ImGui::CalcTextSize(line.c_str());
+    dl->AddText(ImVec2(p.x + (sz.x - ts.x) * 0.5f, p.y + (sz.y - ts.y) * 0.5f), u32(txt), line.c_str());
+    if (hot) {  // the row answers Left / Right
+        const ImVec2 ls = ImGui::CalcTextSize("<");
+        dl->AddText(ImVec2(p.x + 12, p.y + (sz.y - ls.y) * 0.5f), u32(txt), "<");
+        dl->AddText(ImVec2(p.x + sz.x - 12 - ls.x, p.y + (sz.y - ls.y) * 0.5f), u32(txt), ">");
+    }
+    ImGui::PopFont();
+    return step;
+}
 }  // namespace
+
+void kv_column_begin(float x, float w, float h) { g_kv = KvColumn{true, x, w, h}; }
+void kv_column_end() { g_kv.on = false; }
+bool kv_column_active() { return g_kv.on; }
 
 bool row_combo(const char* label, int* v, const char* const* items, int count, const char* help) {
     ImGui::PushID(label);
+    if (g_kv.on) {
+        const int cur = (*v >= 0 && *v < count) ? *v : 0;
+        const int step = count > 0 ? kv_row(label, items[cur], help) : 0;
+        if (step) *v = (cur + count + step) % count;
+        script_mark(label);
+        ImGui::PopID();
+        return step != 0;
+    }
     row_begin(label, help);
     int cur = (*v >= 0 && *v < count) ? *v : 0;
     bool changed = false;
@@ -167,6 +237,13 @@ bool row_combo(const char* label, int* v, const char* const* items, int count, c
 
 bool row_toggle(const char* label, int* v, const char* help) {
     ImGui::PushID(label);
+    if (g_kv.on) {
+        const int step = kv_row(label, tr(*v ? "On" : "Off"), help);
+        if (step) *v = *v ? 0 : 1;
+        script_mark(label);
+        ImGui::PopID();
+        return step != 0;
+    }
     const float cw = row_begin(label, help);
     // Pill switch drawn over an invisible button so mouse, keyboard and
     // gamepad all activate it the same way.
@@ -174,7 +251,7 @@ bool row_toggle(const char* label, int* v, const char* help) {
     const float w = h * 1.9f;
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + cw - w);
     const ImVec2 p = ImGui::GetCursorScreenPos();
-    const bool clicked = ImGui::InvisibleButton("##t", ImVec2(w, h));
+    const bool clicked = ImGui::InvisibleButton("##t", ImVec2(w, h), ImGuiButtonFlags_EnableNav);
     if (clicked) *v = *v ? 0 : 1;
     ImDrawList* dl = ImGui::GetWindowDrawList();
     const ImVec4 bg = *v ? g_theme.accent : g_theme.surface_hi;
@@ -191,6 +268,15 @@ bool row_toggle(const char* label, int* v, const char* help) {
 
 bool row_slider(const char* label, int* v, int lo, int hi, const char* fmt, const char* help) {
     ImGui::PushID(label);
+    if (g_kv.on) {
+        char buf[64];
+        std::snprintf(buf, sizeof buf, fmt, *v);
+        const int step = kv_row(label, buf, help);
+        if (step) *v = std::max(lo, std::min(hi, *v + step * std::max(1, (hi - lo) / 20)));
+        script_mark(label);
+        ImGui::PopID();
+        return step != 0;
+    }
     row_begin(label, help);
     const bool c = ImGui::SliderInt("##s", v, lo, hi, fmt, ImGuiSliderFlags_AlwaysClamp);
     script_mark(label);
@@ -200,6 +286,11 @@ bool row_slider(const char* label, int* v, int lo, int hi, const char* fmt, cons
 
 void row_text(const char* label, const char* value, ImVec4 color) {
     ImGui::PushID(label);
+    if (g_kv.on) {
+        kv_row(label, value, nullptr);
+        ImGui::PopID();
+        return;
+    }
     row_begin(label, nullptr);
     ImGui::PushStyleColor(ImGuiCol_Text, color);
     ImGui::TextUnformatted(value);

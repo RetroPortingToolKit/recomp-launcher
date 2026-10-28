@@ -92,7 +92,7 @@ void App::draw_graphics() {
             // preset_top is a viewport position on an unscrolled page; follow
             // the page's scroll so the column and every row after it scroll
             // with it (an absolute column pins the rows below it off screen).
-            vy = sk.metric("preset_top", 147) - ImGui::GetScrollY();
+            vy = std::max(sk.metric("preset_top", 147) - ImGui::GetScrollY(), ImGui::GetCursorScreenPos().y);
             vx = (ImGui::GetMainViewport()->WorkSize.x - bw) * 0.5f;
         }
         int pushed = 0;
@@ -107,6 +107,43 @@ void App::draw_graphics() {
             ImGui::SetCursorScreenPos(ImVec2(vx, vy + vpitch * slot));
             ++slot;
         };
+        if (vertical) {
+            // The menu column: "Graphics: Ultra" first (Left/Right walk the
+            // presets, Custom reads as itself), then the list of presets
+            // below it, then every other row in the same box style.
+            kv_column_begin(vx, bw, vh);
+            place();
+            std::vector<const char*> names;
+            std::vector<int> values;
+            if (auto_mode) {
+                names.push_back(tr("Auto"));
+                values.push_back(0);
+            }
+            for (int p = kQualityLow; p <= kQualityUltra; ++p)
+                if ((g->quality_offered_mask >> (p - 1)) & 1) {
+                    names.push_back(tr(quality_name(p)));
+                    values.push_back(p);
+                }
+            int cur = -1;
+            for (size_t i = 0; i < values.size(); ++i)
+                if (values[i] == io->quality_preset && !(auto_mode && values[i] == g->quality_detected)) cur = static_cast<int>(i);
+            if (cur < 0 && auto_mode && io->quality_preset == g->quality_detected && io->quality_preset >= 1) cur = 0;
+            if (io->quality_preset == kQualityCustom) {
+                names.push_back(tr("Custom"));
+                values.push_back(kQualityCustom);
+                cur = static_cast<int>(values.size()) - 1;
+            }
+            if (cur < 0) cur = 0;
+            if (row_combo(tr("Graphics"), &cur, names.data(), static_cast<int>(names.size()))) {
+                const int want = values[static_cast<size_t>(cur)];
+                if (want == 0) {
+                    const int p = g->quality_redetect ? g->quality_redetect() : g->quality_detected;
+                    if (p >= kQualityLow && p <= kQualityUltra) s.quality.select(p, io);
+                } else if (want != kQualityCustom) {
+                    s.quality.select(want, io);
+                }
+            }
+        }
         if (auto_mode) {
             // Auto: whatever the hardware detection picks (Re-detect refreshes it).
             const bool is_auto = io->quality_preset == g->quality_detected && io->quality_preset >= 1 &&
@@ -150,6 +187,9 @@ void App::draw_graphics() {
         }
         if (pushed) ImGui::PopStyleColor(pushed);
         if (vertical) ImGui::SetCursorScreenPos(ImVec2(ImGui::GetCursorScreenPos().x, vy + vpitch * slot + 8));
+        if (vertical) {  // the rest of the page sits in the column, below the presets
+            ImGui::Dummy(ImVec2(0, 4));
+        }
         if (io->quality_preset == kQualityCustom) {
             chip(tr("Custom"), theme().accent);
             ImGui::SameLine();
@@ -221,7 +261,7 @@ void App::draw_graphics() {
             io->internal_resolution = g->internal_resolution_values[idx];
         unlock();
         restart_chip(offsetof(RecompLauncherCSettings, internal_resolution), sizeof(int));
-        if (g->has_supersample) {
+        if (g->has_supersample && S("graphics.supersampling")) {
             static const char* const kSsLabels[] = {"Off", "1.25x", "1.5x", "2x"};
             static const int kSsMilli[] = {1000, 1250, 1500, 2000};
             int ss = 0;
@@ -351,6 +391,7 @@ void App::draw_graphics() {
         }
     }
     if (S("graphics.skin")) draw_skin_picker(*this);
+    kv_column_end();
 }
 
 void draw_skin_picker(App& app) {

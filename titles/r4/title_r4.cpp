@@ -56,7 +56,7 @@ const SurfaceRule kSurface[] = {
     {"graphics.frame_generation", Vis::Shown, nullptr},   // "Smooth motion"
     {"graphics.fullscreen", Vis::Shown, nullptr},
     {"graphics.dynamic_resolution", Vis::Auto, nullptr}, // the preset decides
-    {"graphics.internal_resolution", Vis::Auto, nullptr},// the preset sets it
+    {"graphics.internal_resolution", Vis::Shown, nullptr}, // the preset seeds it; the row stays selectable
     {"graphics.title_features", Vis::Hidden, nullptr},    // widescreen Fit / max detail stay on
     // Controls: Modern / Classic and rebinding.
     {"controls.scheme", Vis::Shown, nullptr},
