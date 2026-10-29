@@ -24,10 +24,18 @@ struct TitleNotice {
     const char* url;      // may be null
 };
 
+// How a surfaced feature reads on Graphics.
+enum FeatureRowFlags {
+    kFeatureToggleOnly = 1,   // the on/off row only; its options stay on the Mods screen
+    kFeatureOptionsOnly = 2,  // its option rows only; the feature itself stays on
+};
+
 // A mod feature the title surfaces outside the Mods screen.
 struct FeatureRef {
     const char* package_id;
     const char* feature_id;
+    const char* label = nullptr;  // plain row name; with kFeatureOptionsOnly, names the first option row
+    int flags = 0;                // FeatureRowFlags
 };
 
 struct ControllerProfile {

@@ -22,10 +22,16 @@ const ControllerProfile kControllers[] = {
      {"r4.compat.jogcon-input", "jogcon-input"}},
 };
 
+// Graphics spelled out as plain rows (owner, 2026-10-28): every setting
+// named, no presets, no catch-all. PGXP itself is never offered off; only
+// its sub-options are rows.
 const FeatureRef kGraphicsFeatures[] = {
-    {"r4.enhancement.widescreen", "widescreen"},
-    {"r4.enhancement.max-detail", "max-detail"},
-    {"psx.enhancement.pgxp", "pgxp"},
+    {"r4.enhancement.frame-rate", "frame-rate", "FPS", kFeatureOptionsOnly},
+    {"r4.enhancement.widescreen", "widescreen", "Aspect", kFeatureOptionsOnly},
+    {"r4.enhancement.car-effects", "car-effects", "Car effects", kFeatureToggleOnly},
+    {"r4.enhancement.max-detail", "max-detail", "Distant detail", kFeatureToggleOnly},
+    {"r4.enhancement.ui-fonts", "ui-glyphs", "HD HUD", kFeatureToggleOnly},
+    {"psx.enhancement.pgxp", "pgxp", nullptr, kFeatureOptionsOnly},
 };
 
 const TitleNotice kNotices[] = {
@@ -50,14 +56,21 @@ const TitleNotice kNotices[] = {
 // R4's surfacing decisions (docs/SUPPORTED.md): as few rows as possible,
 // everything else automatic. Undeclared keys follow the default rule.
 const SurfaceRule kSurface[] = {
-    // Graphics: the preset (Auto = detected Low..Ultra), Smooth motion, screen mode.
-    {"graphics.preset", Vis::Shown, "auto"},
-    {"graphics.redetect", Vis::Hidden, nullptr},          // Auto re-detects
-    {"graphics.frame_generation", Vis::Shown, nullptr},   // "Smooth motion"
+    // Graphics (owner, 2026-10-28): plain rows like a PC game, no presets.
+    // Window mode, V-Sync, Resolution, then every image setting by name and
+    // the enhancement rows (kGraphicsFeatures).
+    {"graphics.preset", Vis::Hidden, nullptr},
+    {"graphics.redetect", Vis::Hidden, nullptr},
+    {"graphics.frame_generation", Vis::Hidden, nullptr},
     {"graphics.fullscreen", Vis::Shown, nullptr},
-    {"graphics.dynamic_resolution", Vis::Auto, nullptr}, // the preset decides
-    {"graphics.internal_resolution", Vis::Shown, nullptr}, // the preset seeds it; the row stays selectable
-    {"graphics.title_features", Vis::Hidden, nullptr},    // widescreen Fit / max detail stay on
+    {"graphics.vsync", Vis::Shown, nullptr},
+    {"graphics.internal_resolution", Vis::Shown, nullptr},
+    {"graphics.supersampling", Vis::Hidden, nullptr},     // a Resolution above the screen is supersampling
+    {"graphics.dynamic_resolution", Vis::Hidden, nullptr},
+    {"graphics.antialiasing", Vis::Shown, nullptr},
+    {"graphics.texture_filter", Vis::Shown, nullptr},
+    {"graphics.fmv_filter", Vis::Shown, nullptr},
+    {"graphics.title_features", Vis::Shown, nullptr},
     // Controls: Modern / Classic and rebinding.
     {"controls.scheme", Vis::Shown, nullptr},
     {"controls.bindings", Vis::Shown, nullptr},

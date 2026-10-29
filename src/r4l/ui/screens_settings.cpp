@@ -32,9 +32,10 @@ namespace {
 void title_text(const char* t, const char* sub) { screen_title(t, sub); }
 
 // Option row for a mod feature option (choice / boolean / integer / text).
-void mod_option_row(ModCatalog& mods, ModFeature& f, ModOption& o) {
+void mod_option_row(ModCatalog& mods, ModFeature& f, ModOption& o, const char* label = nullptr) {
     ImGui::BeginDisabled(o.info.disabled || !f.info.enabled);
     const char* help = o.info.description[0] ? o.info.description : nullptr;
+    const char* name = label ? label : o.info.label;
     if (o.info.type == RECOMP_MOD_OPTION_CHOICE && !o.choices.empty()) {
         std::vector<const char*> labels;
         int cur = -1;
@@ -42,18 +43,18 @@ void mod_option_row(ModCatalog& mods, ModFeature& f, ModOption& o) {
             labels.push_back(o.choices[i].label[0] ? o.choices[i].label : o.choices[i].value);
             if (!std::strcmp(o.choices[i].value, o.info.value)) cur = static_cast<int>(i);
         }
-        if (row_combo(o.info.label, &cur, labels.data(), static_cast<int>(labels.size()), help))
+        if (row_combo(name, &cur, labels.data(), static_cast<int>(labels.size()), help))
             mods.set_option(f, o, o.choices[cur].value);
     } else if (o.info.type == RECOMP_MOD_OPTION_BOOLEAN) {
         int v = !std::strcmp(o.info.value, "true") ? 1 : 0;
-        if (row_toggle(o.info.label, &v, help)) mods.set_option(f, o, v ? "true" : "false");
+        if (row_toggle(name, &v, help)) mods.set_option(f, o, v ? "true" : "false");
     } else if (o.info.type == RECOMP_MOD_OPTION_INTEGER) {
         int v = std::atoi(o.info.value);
-        if (row_slider(o.info.label, &v, static_cast<int>(o.info.min_value), static_cast<int>(o.info.max_value),
+        if (row_slider(name, &v, static_cast<int>(o.info.min_value), static_cast<int>(o.info.max_value),
                        "%d", help))
             mods.set_option(f, o, std::to_string(v));
     } else {
-        row_text(o.info.label, o.info.value, theme().text_dim);
+        row_text(name, o.info.value, theme().text_dim);
     }
     ImGui::EndDisabled();
 }
@@ -69,7 +70,9 @@ void App::draw_graphics() {
         chip(tr("Some changes apply after this match"), theme().warn);
     RecompLauncherCSettings* io = s.io;
     const RecompLauncherCGameInfo* g = s.game;
-    title_text(tr("Graphics"), tr("Pick a preset, or change any row. Changing a row a preset sets makes it Custom."));
+    title_text(tr("Graphics"), g && g->quality_offered_mask && S("graphics.preset")
+                                     ? tr("Pick a preset, or change any row. Changing a row a preset sets makes it Custom.")
+                                     : nullptr);
     if (!io || !g) return;
     auto lock = [&](const char* key) { ImGui::BeginDisabled(L(key)); };
     auto unlock = [&]() { ImGui::EndDisabled(); };
@@ -222,7 +225,7 @@ void App::draw_graphics() {
         const char* l[3] = {tr(kLayout[0]), tr(kLayout[1]), tr(kLayout[2])};
         int v = io->fullscreen >= 0 && io->fullscreen <= 2 ? io->fullscreen : 0;
         lock("graphics.fullscreen");
-        if (row_combo(tr("Window"), &v, l, 3)) io->fullscreen = v;
+        if (row_combo(tr("Window mode"), &v, l, 3)) io->fullscreen = v;
         unlock();
     }
 
@@ -262,7 +265,7 @@ void App::draw_graphics() {
         for (int i = 0; i < g->num_internal_resolutions; ++i)
             if (g->internal_resolution_values[i] == io->internal_resolution) idx = i;
         lock("graphics.internal_resolution");
-        if (row_combo(tr("Internal resolution"), &idx, g->internal_resolution_labels, g->num_internal_resolutions,
+        if (row_combo(tr("Resolution"), &idx, g->internal_resolution_labels, g->num_internal_resolutions,
                       g->internal_resolution_note))
             io->internal_resolution = g->internal_resolution_values[idx];
         unlock();
@@ -391,11 +394,21 @@ void App::draw_graphics() {
         for (int i = 0; i < t.graphics_feature_count; ++i) {
             ModFeature* f = mods.find(t.graphics_features[i].package_id, t.graphics_features[i].feature_id);
             if (!f) continue;
+            const FeatureRef& ref = t.graphics_features[i];
             ImGui::PushID(i);
-            int on = f->info.enabled;
-            if (row_toggle(f->info.name, &on, f->info.description[0] ? f->info.description : nullptr))
-                mods.set_enabled(*f, on != 0);
-            for (auto& o : f->options) mod_option_row(mods, *f, o);
+            if (!(ref.flags & kFeatureOptionsOnly)) {
+                int on = f->info.enabled;
+                if (row_toggle(ref.label ? ref.label : f->info.name, &on,
+                               f->info.description[0] ? f->info.description : nullptr))
+                    mods.set_enabled(*f, on != 0);
+            }
+            if (!(ref.flags & kFeatureToggleOnly)) {
+                bool first = true;
+                for (auto& o : f->options) {
+                    mod_option_row(mods, *f, o, first && (ref.flags & kFeatureOptionsOnly) ? ref.label : nullptr);
+                    first = false;
+                }
+            }
             ImGui::PopID();
         }
     }
