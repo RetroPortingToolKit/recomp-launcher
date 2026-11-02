@@ -280,10 +280,10 @@ void App::frame() {
         ImGui::PushID(i);
         const ImVec2 rp = ImGui::GetCursorScreenPos();
         const float w = ImGui::GetContentRegionAvail().x;
-        if (focus_request == sc) {
-            ImGui::SetKeyboardFocusHere();
-            focus_request = Screen::Count;
-        }
+        // A window's first frames can drop a focus request (it is not yet the
+        // nav window), so keep asking until the item really holds the focus.
+        const bool focus_pending = focus_request == sc;
+        if (focus_pending) ImGui::SetKeyboardFocusHere();
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
@@ -295,6 +295,10 @@ void App::frame() {
             else if (sc == Screen::Back) open_options(false);
             else
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
+        }
+        if (focus_pending && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
+            focus_request = Screen::Count;
+            focus_request_frames = 0;
         }
         ImGui::PopStyleColor(3);
         // Right from any rail item enters the page. ImGui's own scoring only

@@ -94,6 +94,7 @@ struct App {
     std::string pending_install;  // set by the file dialog (any thread), under job.mu
     float ui_scale = 0;
     Screen focus_request = Screen::Count;  // move nav focus once
+    int focus_request_frames = 0;          // frames focus_request has been pending
     bool content_focus = false;                // Right from the rail: focus the page's first control
     bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
     bool pad_back_closes = false;              // launcher.select_menu: Select acts as B in the menu
