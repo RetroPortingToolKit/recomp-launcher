@@ -306,7 +306,8 @@ void App::draw_graphics() {
     }
 
     if (surf.any_shown("graphics.antialiasing") || S("graphics.texture_filter") || S("graphics.fmv_filter") ||
-        S("graphics.scanlines") || S("graphics.screen_kind") || S("graphics.geometry"))
+        S("graphics.scanlines") || S("graphics.screen_kind") || S("graphics.geometry") ||
+        S("graphics.bloom") || S("graphics.texture_lod") || S("graphics.dithering"))
         section(tr("Image"));
     if (S("graphics.antialiasing") && g->has_antialiasing) {
         lock("graphics.antialiasing");
@@ -357,6 +358,66 @@ void App::draw_graphics() {
         if (io->scanlines) row_slider(tr("Scanline strength"), &io->scanline_strength_pct, 0, 100, "%d%%");
         unlock();
     }
+#if defined(RECOMP_LAUNCHER_HAS_IMAGE_SETTINGS)
+    // Image and PGXP renderer rows: the host applies each one as it changes.
+    if (g->has_image_settings) {
+        if (S("graphics.bloom")) {
+            lock("graphics.bloom");
+            row_toggle(tr("Bloom"), &io->bloom, tr("Soft glow on bright parts of the picture."));
+            unlock();
+        }
+        if (S("graphics.texture_lod")) {
+            lock("graphics.texture_lod");
+            row_toggle(tr("Texture detail (mipmaps)"), &io->texture_lod,
+                       tr("Smooths distant textures so they do not shimmer."));
+            if (io->texture_lod) {
+                static const char* kAniso[] = {"Off", "2x", "4x", "8x", "16x"};
+                static const int kAnisoValue[] = {1, 2, 4, 8, 16};
+                const char* l[5] = {tr(kAniso[0]), tr(kAniso[1]), tr(kAniso[2]), tr(kAniso[3]), tr(kAniso[4])};
+                int idx = 0;
+                for (int i = 0; i < 5; ++i)
+                    if (io->anisotropic_filtering >= kAnisoValue[i]) idx = i;
+                if (row_combo(tr("Anisotropic filtering"), &idx, l, 5)) io->anisotropic_filtering = kAnisoValue[idx];
+            }
+            unlock();
+        }
+        if (S("graphics.dithering")) {
+            static const char* kDither[] = {"Off", "Original", "Fine"};
+            const char* l[3] = {tr(kDither[0]), tr(kDither[1]), tr(kDither[2])};
+            int v = io->dithering >= 0 && io->dithering <= 2 ? io->dithering : 1;
+            lock("graphics.dithering");
+            if (row_combo(tr("Dithering"), &v, l, 3,
+                          tr("The console's colour dither pattern. Off draws true colour.")))
+                io->dithering = v;
+            unlock();
+        }
+        if (S("graphics.pgxp_depth") || S("graphics.pgxp_color") || S("graphics.pgxp_seam")) {
+            section(tr("PGXP"));
+            if (S("graphics.pgxp_depth")) {
+                lock("graphics.pgxp_depth");
+                row_toggle(tr("Depth buffer"), &io->pgxp_depth_buffer,
+                           tr("Sorts polygons by true depth instead of draw order."));
+                unlock();
+            }
+            if (S("graphics.pgxp_color")) {
+                lock("graphics.pgxp_color");
+                row_toggle(tr("Perspective colour"), &io->pgxp_color_correction,
+                           tr("Perspective-correct shading across large polygons."));
+                unlock();
+            }
+            if (S("graphics.pgxp_seam")) {
+                static const char* kSeam[] = {"Off", "Fine", "Wide"};
+                const char* l[3] = {tr(kSeam[0]), tr(kSeam[1]), tr(kSeam[2])};
+                int v = io->pgxp_seam >= 0 && io->pgxp_seam <= 2 ? io->pgxp_seam : 0;
+                lock("graphics.pgxp_seam");
+                if (row_combo(tr("Seam expansion"), &v, l, 3,
+                              tr("Widens polygon edges a little to hide cracks between them.")))
+                    io->pgxp_seam = v;
+                unlock();
+            }
+        }
+    }
+#endif
     if (S("graphics.geometry") && g->has_geometry_precision) {
         lock("graphics.geometry");
         row_toggle(tr("Geometry correction"), &io->geometry_correction, tr("Sub-pixel vertex precision (PGXP)."));

@@ -1583,7 +1583,18 @@ struct RecompLauncherCSettings {
      * (1000 = off, 1250, 1500, 2000), shown when GameInfo.has_supersample.
      * 0 = unset (the host's default). Appended additively. */
     int  supersample_milli;
+    /* Image and PGXP renderer rows (GameInfo.has_image_settings), in the
+     * host's [video] encodings; every one applies live. bloom is on/off (on =
+     * the title's configured strength). Appended additively. */
+    int  bloom;                 // 0/1
+    int  texture_lod;           // 0 off, 1 mipmap
+    int  anisotropic_filtering; // 1..16
+    int  dithering;             // 0 off, 1 original pattern, 2 fine
+    int  pgxp_depth_buffer;     // 0/1
+    int  pgxp_color_correction; // 0/1
+    int  pgxp_seam;             // 0 off, 1 fine, 2 wide
 };
+#define RECOMP_LAUNCHER_HAS_IMAGE_SETTINGS 1
 #define RECOMP_LAUNCHER_HAS_ZAPPER_SETTINGS 1
 
 /* Largest run-ahead depth the launcher will offer for
@@ -2392,6 +2403,9 @@ typedef struct RecompLauncherCGameInfo {
     const char* const* texture_filter_labels;
     const int*         texture_filter_values;
     int                num_texture_filters;
+    /* Nonzero: the host offers Settings.bloom .. pgxp_seam (Graphics > Image
+     * and PGXP rows), all live. Appended for ABI stability. */
+    int                has_image_settings;
 } RecompLauncherCGameInfo;
 
 /* RecompLauncherCGameInfo carries texture_filter_labels / _values. */
