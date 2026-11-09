@@ -96,7 +96,11 @@ ModFeature* ModCatalog::find(const char* package_id, const char* feature_id) {
     return nullptr;
 }
 
+bool ModCatalog::required(const ModFeature& f) const {
+    return required_features.count(std::string(f.info.package_id) + "/" + f.info.id) != 0;
+}
 bool ModCatalog::set_enabled(ModFeature& f, bool on) {
+    if (!on && required(f)) return false;
     // In-game (live set): the host records and saves the change on its own
     // thread; this side only mirrors it. In the launcher, the provider does.
     if (!live) {

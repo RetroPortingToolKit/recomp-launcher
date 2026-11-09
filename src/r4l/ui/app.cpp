@@ -446,6 +446,12 @@ void App::begin(RecompLauncherCSettings* io, const RecompLauncherCGameInfo* game
     // RECOMP_LAUNCHER_PREGAME (psxrecomp --launcher) keeps the old pre-game launcher.
     in_game = surf.automatic("launcher.in_game") && !std::getenv("RECOMP_LAUNCHER_PREGAME");
     mods.bind(game ? game->mods : nullptr);
+    mods.required_features.clear();
+    for (int i = 0; i < title->graphics_feature_count; ++i) {
+        const auto& f = title->graphics_features[i];
+        if (f.flags & kFeatureRequired)
+            mods.required_features.insert(std::string(f.package_id) + "/" + f.feature_id);
+    }
 #if defined(PSX_MOD_DEVELOPER_CHANNEL)
     mods.refresh(true);
 #else

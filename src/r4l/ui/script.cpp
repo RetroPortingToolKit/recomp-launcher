@@ -337,7 +337,10 @@ void Script::step(App& app, Platform& plat) {
             std::fprintf(stderr, "[r4l-script] %s seen \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
             if (!ok) ++failures_;
         } else if (op == "shot") {
-            plat.capture_png(rest);
+            if (!plat.capture_png(rest)) {
+                std::fprintf(stderr, "[r4l-script] FAIL capture %s (overlay captures use the host)\n", rest.c_str());
+                ++failures_;
+            }
         } else if (op == "status") {
             const bool ok = app.s.status.find(rest) != std::string::npos || app.np_status.find(rest) != std::string::npos;
             std::fprintf(stderr, "[r4l-script] %s status \"%s\" (now \"%s\")\n", ok ? "PASS" : "FAIL", rest.c_str(),

@@ -633,10 +633,12 @@ void App::draw_mods() {
             const ImVec2 tp = ImGui::GetCursorScreenPos();
             const float h = 26;
             ImGui::SetCursorScreenPos(ImVec2(tp.x, p.y + (theme().row_h - h) * 0.5f));
+            ImGui::BeginDisabled(mods.required(f));
             if (ImGui::InvisibleButton("##tog", ImVec2(50, h))) {
                 on = !on;
                 mods.set_enabled(f, on != 0);
             }
+            ImGui::EndDisabled();
             script_mark((std::string("mod:") + f.info.name).c_str());
             const ImVec2 a = ImGui::GetItemRectMin();
             dl->AddRectFilled(a, ImVec2(a.x + 50, a.y + h),
@@ -981,6 +983,8 @@ void App::draw_controls() {
                         capture.alt = alt;
                         capture.started = time;
                     }
+                    const std::string mark = std::string("bind:") + id + ":" + kPsxInputs[i].label;
+                    script_mark(mark.c_str());
                 };
                 const std::string& src = pm->source[i];
                 const size_t c = src.find(',');

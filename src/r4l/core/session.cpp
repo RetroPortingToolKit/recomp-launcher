@@ -66,7 +66,7 @@ void Session::begin(RecompLauncherCSettings* io_, const RecompLauncherCGameInfo*
 
     const int n = (game && game->num_discs > 1) ? game->num_discs : 1;
     discs.assign(static_cast<size_t>(n), DiscPick{});
-    if (game && game->num_discs > 1 && game->discs) {
+    if (game && game->num_discs > 0 && game->discs) {
         for (int i = 0; i < n; ++i)
             if (game->discs[i].path) discs[i].path = game->discs[i].path;
     }

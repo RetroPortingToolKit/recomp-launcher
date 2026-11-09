@@ -68,6 +68,8 @@ public:
     bool set_package_option(ModPackageView& pkg, ModOption& o, const std::string& value);
     bool set_resource(ModFeature& f, const RecompLauncherCModResource& r, const std::string& path);
     int disable_all();
+    bool required(const ModFeature& f) const;
+    std::set<std::string> required_features;
     bool has_versions() const { return p_ && p_->version_count; }
     bool dirty() const { return dirty_; }
     // Overlay: the host records, saves (mods/state.toml) and applies every

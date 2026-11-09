@@ -26,6 +26,7 @@ struct TitleNotice {
 
 // How a surfaced feature reads on Graphics.
 enum FeatureRowFlags {
+    kFeatureRequired = 4,     // title requires this feature enabled, including on Mods
     kFeatureToggleOnly = 1,   // the on/off row only; its options stay on the Mods screen
     kFeatureOptionsOnly = 2,  // its option rows only; the feature itself stays on
 };

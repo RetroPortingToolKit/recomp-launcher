@@ -1409,6 +1409,7 @@ struct RecompLauncherCSettings {
     // the model seeds it from GameInfo.assist_fast_forward_min. Appended for
     // ABI stability.
     int  assist_fast_forward_multiplier;
+    int  fast_forward_toggle_mode;
 
     /* Named host shortcuts are independent of settings_bindings: a host can
      * retain its legacy gameplay binding store and still consume these. */
@@ -1631,6 +1632,7 @@ typedef struct RecompLauncherCDiscVerify {
     char disc_fp[65];      // lowercase hex SHA-256 TOC fingerprint; "" if none
     char netplay_detail[160];
     int sbi_status; // RECOMP_SBI_*; zero means no requirement recorded by host.
+    int profile_handoff; // host verified another shipped backend
 } RecompLauncherCDiscVerify;
 
 /* Host BIOS check for the first-run setup wizard (has_bios games). */
@@ -2415,6 +2417,7 @@ typedef struct RecompLauncherCGameInfo {
 #define RECOMP_LAUNCHER_RESULT_QUIT         1
 #define RECOMP_LAUNCHER_RESULT_UNAVAILABLE  2
 #define RECOMP_LAUNCHER_RESULT_RELAUNCH     3
+#define RECOMP_LAUNCHER_RESULT_PROFILE      4
 
 // *io always comes back carrying the player's edits, whichever way the
 // launcher closed -- a setting changed and then dismissed is still a setting

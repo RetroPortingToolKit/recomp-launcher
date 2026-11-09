@@ -209,13 +209,15 @@ void apply_transitions(Overlay& o) {
         a.options_open = false;
         o.open = false;
         skin().play("back");
-        // In-game launcher: edits that only take effect at start-up are
-        // applied by a quick relaunch when the menu closes.
+        // A disc change needs a new session. Other restart-only edits remain
+        // pending until the player next starts the game.
         if (a.in_game && !a.netplay_locked && !a.exit_requested && o.host && o.host->request_exit) {
             const bool disc = a.s.primary_disc() != o.disc_at_open;
             if (disc) a.s.persist_media(&err);
-            if (a.applied_bits || a.mods_restart || disc) {
-                std::fprintf(stdout, "r4l: relaunching for restart-only changes\n");
+            // Restart-only settings are saved and labelled by the UI; Resume
+            // must not discard an ongoing game merely because one was edited.
+            if (disc) {
+                std::fprintf(stdout, "r4l: relaunching for disc change\n");
                 // The relaunched game starts straight in: the player already
                 // left the boot menu.
 #if defined(_WIN32)
@@ -324,6 +326,12 @@ extern "C" int recomp_overlay_handle_event(const void* ev) {
             if (!down && back) {
                 o.select_hold = false;
                 if (!o.select_chord && !toggle && !is_open) request_open(true);
+                if (o.select_chord) {
+                    // Release the UI key even if its down edge just closed the
+                    // menu. Otherwise Back stays held across the next opening.
+                    std::lock_guard<std::mutex> lk(o.mu);
+                    o.events.push_back(e);
+                }
                 return 1;
             }
             if (toggle) o.select_hold = false;  // Start + Select: the combo opens it

@@ -439,7 +439,30 @@ static void test_steam_shortcuts(const std::string& dir) {
     CHECK(slurp(u2 + "/shortcuts.vdf") == "garbage");
 }
 
+static void test_required_feature_and_single_disc() {
+    ModCatalog mods;
+    ModFeature feature{};
+    std::snprintf(feature.info.package_id, sizeof feature.info.package_id, "test.required");
+    std::snprintf(feature.info.id, sizeof feature.info.id, "required");
+    feature.info.enabled = 1;
+    mods.required_features.insert("test.required/required");
+    int calls = 0;
+    mods.live = [&](const char*, const char*, const char*, const char*) { ++calls; return 1; };
+    CHECK(!mods.set_enabled(feature, false));
+    CHECK(feature.info.enabled == 1 && calls == 0);
+    mods.features.push_back(feature);
+    CHECK(mods.disable_all() == 0 && calls == 0);
+    RecompLauncherCDisc disc{1, "Disc", "/test/current-disc.cue"};
+    RecompLauncherCGameInfo game{};
+    game.discs = &disc; game.num_discs = 1;
+    RecompLauncherCSettings settings{};
+    Session session;
+    session.begin(&settings, &game, "", nullptr);
+    CHECK(session.primary_disc() == disc.path);
+}
+
 int main(int argc, char** argv) {
+    test_required_feature_and_single_disc();
     const std::string dir = tmpdir();
     test_ini_preserves_foreign_lines();
     test_steam_shortcuts(dir);
