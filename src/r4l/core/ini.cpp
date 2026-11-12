@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <filesystem>
 #include <sstream>
 
 namespace r4l {
@@ -80,9 +81,15 @@ bool IniDoc::save(const std::string& path) const {
         std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
         if (!f) return false;
         f << text();
+        f.close();
         if (!f) return false;
     }
-    return std::rename(tmp.c_str(), path.c_str()) == 0;
+    // filesystem::rename replaces an existing destination on Windows too;
+    // the C runtime rename leaves updated bindings stranded in .tmp there.
+    std::error_code error;
+    std::filesystem::rename(std::filesystem::u8path(tmp),
+                            std::filesystem::u8path(path), error);
+    return !error;
 }
 
 bool IniDoc::has(const std::string& section, const std::string& key) const {
