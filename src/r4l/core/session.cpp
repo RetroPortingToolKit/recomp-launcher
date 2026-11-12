@@ -31,6 +31,8 @@ std::string join_path(const std::string& dir, const std::string& name) {
 }
 
 std::string current_exe_dir() {
+    /* Packaged hosts keep player settings outside their signed resources. */
+    if(const char *root=std::getenv("RECOMP_USER_DATA_DIR");root && *root)return root;
     char buf[4096] = {0};
 #if defined(__APPLE__)
     uint32_t n = sizeof(buf);
