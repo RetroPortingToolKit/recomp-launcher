@@ -365,7 +365,7 @@ bool App::states_allowed() const {
 }
 
 void App::navigate_back() {
-    if (state_request_pending) return;
+    if (state_request_pending || race_action_pending || introduction_first) return;
     if (disc_browser_open) { disc_browser_open = false; return; }
     if (main_screen && options_open) {
         open_options(false);
@@ -374,7 +374,7 @@ void App::navigate_back() {
         screen = Screen::Main;
         focus_request = previous;
         content_focus = false;
-    } else if (!setup_only) {
+    } else if (!setup_only && !(title->race_actions && (title->race_actions() & 8u))) {
         overlay_open = false;
     }
 }
@@ -390,13 +390,60 @@ void App::open_options(bool open) {
     }
 }
 
+bool App::introduction_seen() const {
+    return std::ifstream(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt")).good();
+}
+
+void App::draw_introduction() {
+    screen_title(tr("Welcome to R4"), tr("Your controls and ways to race"));
+    for (int i = 0; i < title->introduction_count; ++i) {
+        const TitleNotice& item = title->introduction[i];
+        section(tr(item.heading));
+        ImGui::TextWrapped("%s", tr(item.body));
+    }
+    if (ImGui::Button(tr(introduction_first ? "Let's race" : "Back"))) {
+        std::ofstream marker(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt"));
+        marker << "1\n";
+        introduction_first = false;
+        screen = Screen::Main;
+        focus_request = Screen::Resume;
+    }
+    script_mark("intro:continue");
+}
+
+void App::queue_game_action(unsigned action) {
+    if (!netplay_locked && title->request_race_action && title->race_action_status &&
+        title->request_race_action(action)) {
+        race_action_pending = true;
+        s.status = tr("Loading...");
+        if (host && host->set_paused) host->set_paused(host->ctx, 0);
+    } else s.status = tr("This option is unavailable right now.");
+}
+
+void App::draw_race_action(bool restart) {
+    screen_title(tr(restart ? "Restart race?" : "Retire from this race?"));
+    // Confirmation consequences remain visible even when a skin hides subtitles.
+    ImGui::TextWrapped("%s", tr(restart ? "Your progress in this race will be lost." :
+                              "Leave this race using the original game rules. This may affect your championship."));
+    ImGui::Dummy(ImVec2(0, 12));
+    ImGui::BeginDisabled(race_action_pending);
+    if (ImGui::Button(tr("Cancel"))) navigate_back();
+    script_mark("race:cancel");
+    ImGui::SameLine();
+    if (ImGui::Button(tr(restart ? "Restart race" : "Retire"))) {
+        const unsigned action = restart ? 2u : 4u;
+        queue_game_action(action);
+    }
+    script_mark("race:confirm");
+    ImGui::EndDisabled();
+}
+
 void App::draw_main() {
     const char* name = s.game && s.game->name ? s.game->name : "";
     screen_title(name, tr(game_started ? "Paused" : "Ready to start"));
     ImGui::Dummy(ImVec2(0, 8));
     ImGui::PushStyleColor(ImGuiCol_Text, theme().text);  // readable on the dark overlay panel
-    ImGui::TextWrapped("%s", tr(game_started ? "Resume Game returns to the race. Options holds display, controls, garage, netplay and settings."
-                                             : "Start Game boots the race. Options holds display, controls, garage, netplay and settings."));
+    ImGui::TextWrapped("%s", tr(game_started ? "Ready when you are." : "Choose your next race."));
     if (netplay_locked) ImGui::TextWrapped("%s", tr("Save states are unavailable during netplay."));
     ImGui::PopStyleColor();
 }

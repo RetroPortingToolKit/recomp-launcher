@@ -47,6 +47,11 @@ struct ControllerProfile {
     FeatureRef feature;      // feature that must be on for it; {nullptr,nullptr} = none
 };
 
+struct TitleGameMode {
+    const char* label;
+    unsigned action;
+};
+
 struct TitleLayer {
     const char* id;              // "r4"
     const char* display_name;    // "R4: Ridge Racer Type 4"
@@ -87,6 +92,19 @@ struct TitleLayer {
     // Optional: the Steam library name for "Add to Steam" (controls.steam);
     // null uses display_name.
     const char* steam_name;
+
+    // Optional game-thread bridge. UI reads atomics and queues an action;
+    // the title executes original game code at a safe guest boundary.
+    // Bits: 1 = race pause, 2 = Restart, 4 = Retire, 8 = main menu.
+    // Bits 8..13 select the title's six original game modes.
+    unsigned (*race_actions)() = nullptr;
+    bool (*request_race_action)(unsigned action) = nullptr;
+    const TitleGameMode* game_modes = nullptr;
+    int game_mode_count = 0; // up to six entries
+    const TitleNotice* introduction = nullptr;
+    int introduction_count = 0;
+    int (*race_action_status)() = nullptr; // 0 pending, 1 success, -1 rejected
+
 };
 
 // Implemented by exactly one titles/<id>/ translation unit.

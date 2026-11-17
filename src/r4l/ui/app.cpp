@@ -50,6 +50,15 @@ const char* screen_name(Screen s) {
     case Screen::SaveState: return "Save State";
     case Screen::LoadState: return "Load State";
     case Screen::Steam: return "Add to Steam";
+    case Screen::RestartRace: return "Restart race";
+    case Screen::RetireRace: return "Retire";
+    case Screen::Introduction: return "How to play";
+    case Screen::GameMode0: return "Game mode";
+    case Screen::GameMode1: return "Game mode";
+    case Screen::GameMode2: return "Game mode";
+    case Screen::GameMode3: return "Game mode";
+    case Screen::GameMode4: return "Game mode";
+    case Screen::GameMode5: return "Game mode";
     default: return "";
     }
 }
@@ -788,7 +797,7 @@ void SDLCALL job_progress(void* ctx, float pct, const char* msg) {
 void App::browse_disc_folder(const std::string& path) {
     namespace fs = std::filesystem;
     std::error_code ec;
-    const fs::path folder = fs::weakly_canonical(fs::path(path), ec);
+    const fs::path folder = fs::weakly_canonical(fs::u8path(path), ec);
     if (ec || !fs::is_directory(folder, ec)) {
         s.status = tr("This folder is unavailable.");
         return;
@@ -822,7 +831,7 @@ void App::draw_disc_browser() {
     ImGui::TextWrapped("%s", disc_browser_path.c_str());
     if (big_button(tr("Back to setup"), ImVec2(0, 44), false)) disc_browser_open = false;
     script_mark("disc-browser:cancel");
-    const fs::path current(disc_browser_path);
+    const fs::path current = fs::u8path(disc_browser_path);
     if (current.has_parent_path() && current.parent_path() != current) {
         if (big_button(tr("Parent folder"), ImVec2(0, 44), false)) {
             browse_disc_folder(current.parent_path().u8string());
@@ -836,7 +845,17 @@ void App::draw_disc_browser() {
         const auto entry = disc_browser_entries[i];
         ImGui::PushID(static_cast<int>(i));
         const std::string label = entry.folder ? entry.label + " /" : entry.label;
-        const bool selected = big_button(label.c_str(), ImVec2(-1, 44), false);
+        const float height = 44 * std::max(1.0f, ui_scale);
+        const ImVec2 at = ImGui::GetCursorScreenPos();
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(.12f, .12f, .12f, 1));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(.18f, .18f, .18f, 1));
+        const bool selected = ImGui::Selectable("##disc-entry", false, 0, ImVec2(-1, height));
+        const bool highlighted = ImGui::IsItemHovered() || ImGui::IsItemFocused();
+        if (highlighted) ImGui::GetWindowDrawList()->AddRectFilled(at,
+            ImVec2(ImGui::GetItemRectMax().x, at.y + height), IM_COL32(30, 30, 30, 255));
+        ImGui::GetWindowDrawList()->AddText(ImVec2(at.x + 12, at.y + (height - ImGui::GetFontSize()) / 2),
+            highlighted ? IM_COL32_WHITE : ImGui::GetColorU32(ImGuiCol_Text), label.c_str());
+        ImGui::PopStyleColor(2);
         script_mark(("disc-browser:" + entry.label).c_str());
         ImGui::PopID();
         if (selected) {
@@ -899,8 +918,8 @@ void App::draw_setup() {
                 std::string("Choose your ") + (g && g->rom_noun ? g->rom_noun : "game disc");
             const char* home = std::getenv("HOME");
             if (!home) home = std::getenv("USERPROFILE");
-            std::filesystem::path initial = d.path.empty() ? std::filesystem::path(home ? home : ".")
-                                                         : std::filesystem::path(d.path).parent_path();
+            std::filesystem::path initial = d.path.empty() ? std::filesystem::u8path(home ? home : ".")
+                                                         : std::filesystem::u8path(d.path).parent_path();
             if (initial.empty()) initial = home ? home : ".";
             browse_disc_folder(initial.u8string());
         }
@@ -1045,7 +1064,8 @@ void App::draw_setup() {
         std::string err;
         if (s.persist_media(&err)) {
             s.status = "Disc saved.";
-            screen = Screen::Home;
+            if (setup_only) request_launch();
+            else screen = Screen::Home;
         } else {
             s.status = err.empty() ? "Could not save the disc setup." : err;
         }

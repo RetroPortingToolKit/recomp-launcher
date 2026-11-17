@@ -20,6 +20,7 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include <array>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -47,6 +48,7 @@ struct Overlay {
     std::atomic<bool> open{false};
     std::atomic<bool> opening{false};   // main asked to open; render applies
     std::atomic<bool> closing{false};   // render asked to close; main applies
+    std::array<std::atomic<int>, kPsxKeyboardPlayers * 2> start_keys{};
     unsigned pad_held = 0;              // main thread
     unsigned combo = (1u << SDL_GAMEPAD_BUTTON_START) | (1u << SDL_GAMEPAD_BUTTON_BACK);
     // launcher.select_menu: Select pressed and released on its own opens the
@@ -57,6 +59,7 @@ struct Overlay {
     bool select_menu = false;
     std::atomic<bool> select_hold{false};
     bool select_chord = false;          // main thread
+    bool main_menu_auto = false;
     bool boot_open = false;             // opened at boot: focus Resume
     std::mutex mu;
     std::vector<SDL_Event> events;      // main -> render
@@ -187,7 +190,12 @@ void apply_transitions(Overlay& o) {
             if (o.boot_open) a.game_started = false;
             a.options_open = false;
             a.screen = Screen::Main;
-            a.focus_request = Screen::Resume;
+            a.focus_request = a.title->race_actions && (a.title->race_actions() & 8u) ? Screen::GameMode0 : Screen::Resume;
+            if (o.boot_open && a.title->introduction_count && !a.introduction_seen()) {
+                a.introduction_first = true;
+                a.screen = Screen::Introduction;
+                a.content_focus = true;
+            }
         } else {
             a.screen = Screen::Graphics;
             // At boot the first press is Resume, which starts the game.
@@ -286,8 +294,16 @@ extern "C" int recomp_overlay_init(void* sdl_window, void*, const RecompLauncher
         }
     }
     if (const char* c = std::getenv("R4L_OVERLAY_COMBO")) g_ov->combo = static_cast<unsigned>(std::strtoul(c, nullptr, 0));
+    g_ov->main_menu_auto = a.surf.automatic("launcher.main_screen") &&
+        !(a.s.io && a.s.io->skip_launcher) &&
+        !(std::getenv("R4L_BOOT_MENU_DONE") && *std::getenv("R4L_BOOT_MENU_DONE") == '1');
     g_ov->select_menu = a.surf.automatic("launcher.select_menu");
     a.pad_back_closes = g_ov->select_menu;
+    for (int player = 0; player < kPsxKeyboardPlayers; ++player) {
+        const KeyBind& start = a.s.keys.player[player][14];
+        g_ov->start_keys[player * 2].store(SDL_GetScancodeFromName(start.primary.c_str()));
+        g_ov->start_keys[player * 2 + 1].store(SDL_GetScancodeFromName(start.alt.c_str()));
+    }
     ImGuiContext* prev = ImGui::GetCurrentContext();
     g_ov->ctx = ImGui::CreateContext();
     ImGui::SetCurrentContext(g_ov->ctx);
@@ -310,6 +326,16 @@ extern "C" int recomp_overlay_handle_event(const void* ev) {
     Overlay& o = *g_ov;
     const bool is_open = o.open.load();
     bool toggle = false;
+    // The title publishes race availability atomically. Keep native Start
+    // behavior outside a race (title screens, selections and online play).
+    const auto& title = active_title();
+    const bool race_pause = title.race_actions && (title.race_actions() & 1u);
+    if (race_pause && !is_open && e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat)
+        for (auto& key : o.start_keys)
+            if (key.load() != SDL_SCANCODE_UNKNOWN && key.load() == e.key.scancode) toggle = true;
+    if (race_pause && !is_open && e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
+        e.gbutton.button == SDL_GAMEPAD_BUTTON_START) toggle = true;
+
     if (e.type == SDL_EVENT_KEY_DOWN && e.key.scancode == SDL_SCANCODE_ESCAPE && !e.key.repeat && !is_open)
         toggle = true;  // inside the menu Esc is "back"; the frame resumes from the top level
     if (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
@@ -399,6 +425,10 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         }
         ImGui::SetCurrentContext(p);
     }
+    if (g_ov && g_ov->main_menu_auto && !g_ov->open.load()) {
+        const auto& title = active_title();
+        if (title.race_actions && (title.race_actions() & 8u)) request_open(true);
+    }
     if (!g_ov || !g_ov->open.load()) return;
     Overlay& o = *g_ov;
     ImGuiContext* prev = ImGui::GetCurrentContext();
@@ -424,6 +454,11 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         int win_w = 0, win_h = 0;
         SDL_GetWindowSize(o.window, &win_w, &win_h);
         if (win_w > 0) o.script->coord_scale = static_cast<float>(win_w) / static_cast<float>(fb_w);
+    }
+    for (int player = 0; player < kPsxKeyboardPlayers; ++player) {
+        const KeyBind& start = o.app->s.keys.player[player][14];
+        o.start_keys[player * 2].store(SDL_GetScancodeFromName(start.primary.c_str()));
+        o.start_keys[player * 2 + 1].store(SDL_GetScancodeFromName(start.alt.c_str()));
     }
     if (o.script) {
         script_frame_begin();

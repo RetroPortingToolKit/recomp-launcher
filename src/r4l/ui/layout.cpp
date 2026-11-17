@@ -128,9 +128,12 @@ void App::frame() {
     // Resume Game, save states, Options, Quit); Options shows the pages
     // behind a Back entry. A first run with no disc offers Select Disc only.
     main_screen = surf.automatic("launcher.main_screen");
+    const unsigned game_actions = !netplay_locked && title->race_actions ? title->race_actions() : 0;
+    const bool game_main_menu = (game_actions & 8u) != 0;
     const bool main_rail = main_screen && overlay && !options_open;
     if (main_screen && overlay && !options_open && screen != Screen::Main && screen != Screen::SaveState &&
-        screen != Screen::LoadState && screen != Screen::Steam && !(setup_only && screen == Screen::Setup))
+        screen != Screen::LoadState && screen != Screen::Steam &&
+        screen != Screen::RestartRace && screen != Screen::RetireRace && screen != Screen::Introduction && !(setup_only && screen == Screen::Setup))
         options_open = true;  // a page was asked for directly (script, deep link)
     if (main_rail && !states_allowed() && (screen == Screen::SaveState || screen == Screen::LoadState))
         screen = Screen::Main;
@@ -142,13 +145,22 @@ void App::frame() {
             navv.push_back(Screen::Setup);  // shown as Select Disc
         } else {
             if (screen != Screen::Main) navv.push_back(Screen::Back);
-            navv.push_back(Screen::Resume);
+            if (game_main_menu) {
+                const Screen modes[] = {Screen::GameMode0, Screen::GameMode1, Screen::GameMode2,
+                                        Screen::GameMode3, Screen::GameMode4, Screen::GameMode5};
+                for (int i = 0; title->game_modes && i < title->game_mode_count && i < 6; ++i)
+                    if (game_actions & title->game_modes[i].action) navv.push_back(modes[i]);
+            } else navv.push_back(Screen::Resume);
             if (states_allowed()) {
-                if (game_started) navv.push_back(Screen::SaveState);
+                if (!game_main_menu && game_started) navv.push_back(Screen::SaveState);
                 navv.push_back(Screen::LoadState);
             }
             navv.push_back(Screen::Options);
-            if (steam_offered()) navv.push_back(Screen::Steam);
+            const unsigned actions = !netplay_locked && title->race_actions ? title->race_actions() : 0;
+            if (actions & 2u) navv.push_back(Screen::RestartRace);
+            if (actions & 4u) navv.push_back(Screen::RetireRace);
+            if (!game_main_menu && title->introduction_count) navv.push_back(Screen::Introduction);
+            if (!game_main_menu && steam_offered()) navv.push_back(Screen::Steam);
         }
         navv.push_back(Screen::QuitGame);
     } else {
@@ -157,11 +169,12 @@ void App::frame() {
         else if (setup_only) navv.push_back(Screen::Setup);  // in-game first run: setup, then play
         else navv.push_back(Screen::Home);
         if (setup_only) {
-            // The game starts as soon as the disc checks out.
-            if (s.media_ready() && !job.running) request_launch();
+            // Continue confirms disc setup; browsing never starts the game.
         } else {
             if (surf.any_shown("graphics.")) navv.push_back(Screen::Graphics);
             if (surf.any_shown("controls.")) navv.push_back(Screen::Controls);
+            if (title->introduction_count) navv.push_back(Screen::Introduction);
+            if (game_main_menu && steam_offered()) navv.push_back(Screen::Steam);
             if (surf.any_shown("mods.") && mods.available()) navv.push_back(Screen::Mods);
             if ((!overlay || in_game) && surf.any_shown("netplay.") && s.game && s.game->netplay_supported && s.game->netplay)
                 navv.push_back(Screen::Netplay);
@@ -173,6 +186,7 @@ void App::frame() {
         if (!main_screen && !setup_only && steam_offered()) navv.push_back(Screen::Steam);
         if (overlay && !main_screen) navv.push_back(Screen::QuitGame);
     }
+    if (disc_browser_open || introduction_first) navv.clear();
     const Screen* nav = navv.data();
     const int nav_n = static_cast<int>(navv.size());
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -233,7 +247,7 @@ void App::frame() {
     ImGui::PopStyleVar();
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
     if (overlay) {
-        bg->AddRectFilled(iv(0, 0), iv(W, H), u32(sk.color("overlay_dim", ImVec4(0, 0, 0, 0.62f))));
+        bg->AddRectFilled(iv(0, 0), iv(W, H), u32(game_main_menu ? theme().bg : sk.color("overlay_dim", ImVec4(0, 0, 0, 0.62f))));
     } else if (sk.loaded()) {
         sk.draw_background(bg);
     } else {
@@ -287,15 +301,19 @@ void App::frame() {
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+        ImGui::BeginDisabled(race_action_pending || state_request_pending);
         if (ImGui::Selectable("##nav", sel, 0, ImVec2(w, item_h))) {
             sk.play("confirm");
             if (sc == Screen::Resume) overlay_open = false;
             else if (sc == Screen::QuitGame) quit_confirm = true;
+            else if (sc >= Screen::GameMode0 && sc <= Screen::GameMode5)
+                queue_game_action(title->game_modes[static_cast<unsigned>(sc) - static_cast<unsigned>(Screen::GameMode0)].action);
             else if (sc == Screen::Options) open_options(true);
             else if (sc == Screen::Back) navigate_back();
             else
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
         }
+        ImGui::EndDisabled();
         if (focus_pending && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
             focus_request = Screen::Count;
             focus_request_frames = 0;
@@ -315,6 +333,8 @@ void App::frame() {
         }
         const bool hov = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && ImGui::GetIO().NavVisible);
         std::string base = tr((sc == Screen::Home && setup_mode) ? "Disc setup" : screen_name(sc));
+        if (sc >= Screen::GameMode0 && sc <= Screen::GameMode5 && title->game_modes)
+            base = tr(title->game_modes[static_cast<unsigned>(sc) - static_cast<unsigned>(Screen::GameMode0)].label);
         if (main_screen && sc == Screen::Resume) base = tr(game_started ? "Resume Game" : "Start Game");
         if (main_screen && setup_only && sc == Screen::Setup) base = tr("Select Disc");
         script_mark(("nav:" + base).c_str());
@@ -407,7 +427,10 @@ void App::frame() {
     case Screen::Setup: draw_setup(); break;
     case Screen::About: draw_about(); break;
     case Screen::System: draw_system(); break;
+    case Screen::Introduction: draw_introduction(); break;
     case Screen::Main: draw_main(); break;
+    case Screen::RestartRace: draw_race_action(true); break;
+    case Screen::RetireRace: draw_race_action(false); break;
     case Screen::SaveState: draw_states(true); break;
     case Screen::LoadState: draw_states(false); break;
     case Screen::Steam: draw_steam_section(); break;
@@ -436,9 +459,16 @@ void App::frame() {
         }
     };
     if (!s.status.empty()) ftxt(s.status, theme().warn);
-    ftxt(sk.label(overlay ? "footer.overlay" : "footer.hints",
-                  overlay ? (main_screen && options_open ? "A Select    B Back    LB/RB Switch page" : "A Select    B Resume    LB/RB Switch page") : "A Select    B Back    LB/RB Switch page    START Play"),
-         theme().text_dim);
+    if (introduction_first || game_main_menu) {
+        ftxt(tr("A Select    Enter Select"), theme().text_dim);
+    } else if (disc_browser_open || setup_only) {
+        ftxt("A Select    B Back    Enter Select    Esc Back", theme().text_dim);
+    } else {
+        const bool child_page = main_screen && (options_open || screen != Screen::Main);
+        ftxt(sk.label(overlay ? "footer.overlay" : "footer.hints",
+                      overlay ? (child_page ? "A Select    B Back    LB/RB Switch page" : "A Select    B Resume    LB/RB Switch page") : "A Select    B Back    LB/RB Switch page    START Play"),
+             theme().text_dim);
+    }
     if (overlay && netplay_locked) ftxt("Netplay: the race keeps running", theme().warn);
     if (!overlay && game_mode) ftxt("Game Mode: next launch boots straight into the race", theme().text_dim);
     ImGui::EndChild();
@@ -497,6 +527,18 @@ void App::restart_chip(size_t off, size_t size, unsigned host_bit) {
 
 void App::overlay_tick() {
     if (!s.io || !host) return;
+    if (race_action_pending && title->race_action_status) {
+        const int result = title->race_action_status();
+        if (result) {
+            race_action_pending = false;
+            if (result > 0) overlay_open = false;
+            else {
+                if (host->set_paused) host->set_paused(host->ctx, 1);
+                s.status = tr("This race action is no longer available.");
+                screen = Screen::Main;
+            }
+        }
+    }
     if (state_request_pending && host->abi_version >= 4 && host->state_status) {
         const int result = host->state_status(host->ctx);
         if (result) {

@@ -27,6 +27,7 @@ enum class Screen {
     // rail entries; Options opens the other pages behind a Back entry.
     Main, Options, Back, SaveState, LoadState,
     Steam,  // controls.steam: Add to Steam (main screen)
+    RestartRace, RetireRace, Introduction, GameMode0, GameMode1, GameMode2, GameMode3, GameMode4, GameMode5,
     Count
 };
 enum class Mode { Launcher, Overlay };
@@ -118,6 +119,10 @@ struct App {
     };
     std::vector<StateSlot> states;             // save-state slots (overlay host v3)
     double states_polled = -100;
+    bool introduction_first = false;
+    void draw_introduction();
+    bool introduction_seen() const;
+    bool race_action_pending = false;
     bool state_request_pending = false, state_request_load = false;
     int states_slot = 0;                       // last slot picked
     Capture capture;
@@ -182,6 +187,8 @@ struct App {
     void draw_system();     // audio, system, memory cards, BIOS, hotkeys
     void draw_steam_section();  // controls.steam: Add to Steam
     bool steam_offered();       // Steam installed, not running from it, not yet registered (or added now)
+    void queue_game_action(unsigned action);
+    void draw_race_action(bool restart);
     void draw_main();       // launcher.main_screen: the main screen's page
     void draw_states(bool save);  // Save State / Load State slots
     bool states_supported() const;  // the host has save-state slots
