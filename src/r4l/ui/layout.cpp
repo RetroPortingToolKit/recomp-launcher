@@ -308,7 +308,7 @@ void App::frame() {
         // A window's first frames can drop a focus request (it is not yet the
         // nav window), so keep asking until the item really holds the focus.
         const bool focus_pending = focus_request == sc;
-        if (focus_pending) ImGui::SetKeyboardFocusHere();
+        if (focus_pending) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
@@ -436,6 +436,7 @@ void App::frame() {
     if (content_focus) {  // Enter a page at its first control
         ImGui::FocusWindow(ImGui::GetCurrentWindow());
         ImGui::NavInitWindow(ImGui::GetCurrentWindow(), true);
+        ImGui::SetNavCursorVisible(true);
         content_focus = false;
     }
     switch (screen) {

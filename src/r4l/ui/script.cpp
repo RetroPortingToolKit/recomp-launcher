@@ -306,7 +306,7 @@ void Script::step(App& app, Platform& plat) {
         } else if (op == "focused") {  // keyboard/gamepad focus is on the item with this label
             auto it = g_prev_ids.find(rest);
             const ImGuiID nav = ImGui::GetCurrentContext()->NavId;
-            const bool ok = it != g_prev_ids.end() && it->second == nav && nav != 0;
+            const bool ok = it != g_prev_ids.end() && it->second == nav && nav != 0 && ImGui::GetCurrentContext()->NavCursorVisible;
             std::fprintf(stderr, "[r4l-script] %s focused \"%s\"\n", ok ? "PASS" : "FAIL", rest.c_str());
             if (!ok && std::getenv("R4L_SCRIPT_DEBUG")) {
                 for (auto& kv : g_prev_ids)
