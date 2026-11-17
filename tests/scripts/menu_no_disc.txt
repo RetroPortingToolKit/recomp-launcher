@@ -4,4 +4,21 @@ rail Select Disc
 unseen nav:Credits
 unseen nav:About
 unseen nav:Graphics
+tap disc:browse
+wait 6
+seen disc-browser:cancel
+key Escape
+wait 4
+seen disc:browse
+unseen disc-browser:cancel
+tap disc:browse
+wait 4
+pad b
+wait 4
+seen disc:browse
+tap disc:browse
+wait 4
+tap disc-browser:cancel
+wait 4
+seen disc:browse
 quit

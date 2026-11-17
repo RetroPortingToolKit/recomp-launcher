@@ -85,6 +85,15 @@ struct App {
     bool overlay_open = false;
     bool netplay_locked = false;               // overlay during netplay: no pause, local-view only
     bool in_game = false;                      // launcher.in_game: no pre-game launcher
+    bool disc_browser_open = false;
+    int disc_browser_slot = 0;
+    std::string disc_browser_path;
+    std::string disc_browser_extensions = "cue;bin;chd;iso";
+    std::string disc_browser_title = "Choose your game disc";
+    struct DiscBrowserEntry { std::string path, label; bool folder; };
+    std::vector<DiscBrowserEntry> disc_browser_entries;
+    void browse_disc_folder(const std::string& path);
+    void draw_disc_browser();
     bool setup_only = false;                   // in-game first run: disc setup, then play
     bool mods_restart = false;                 // overlay: a mod change waits for a restart
     bool exit_requested = false;               // overlay: request_exit already sent
@@ -109,6 +118,7 @@ struct App {
     };
     std::vector<StateSlot> states;             // save-state slots (overlay host v3)
     double states_polled = -100;
+    bool state_request_pending = false, state_request_load = false;
     int states_slot = 0;                       // last slot picked
     Capture capture;
     Job job;
@@ -176,6 +186,7 @@ struct App {
     void draw_states(bool save);  // Save State / Load State slots
     bool states_supported() const;  // the host has save-state slots
     bool states_allowed() const;    // ... and allows them now (not netplay)
+    void navigate_back();
     void open_options(bool open);   // main screen <-> Options
     void draw_memcards();
     void ensure_disc_assets();

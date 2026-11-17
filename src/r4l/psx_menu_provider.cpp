@@ -63,6 +63,10 @@ int oh_state_save(void*, int n) { return g_host && g_host->state_save ? g_host->
 int oh_state_load(void*, int n) { return g_host && g_host->state_load ? g_host->state_load(n) : 0; }
 #endif
 
+#if defined(PSX_MENU_HOST_HAS_STATE_STATUS)
+int oh_state_status(void*) { return g_host && g_host->state_status ? g_host->state_status() : -1; }
+#endif
+
 const RecompOverlayHost g_overlay_host = {
     RECOMP_OVERLAY_ABI_VERSION, nullptr, oh_set_paused, oh_netplay_active, oh_apply_settings,
     oh_mod_set, oh_reload_bindings, oh_request_exit,
@@ -71,6 +75,11 @@ const RecompOverlayHost g_overlay_host = {
     oh_state_slot_count, oh_state_available, oh_state_info, oh_state_thumb, oh_state_save, oh_state_load,
 #else
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+#endif
+#if defined(PSX_MENU_HOST_HAS_STATE_STATUS)
+    oh_state_status,
+#else
+    nullptr,
 #endif
 };
 

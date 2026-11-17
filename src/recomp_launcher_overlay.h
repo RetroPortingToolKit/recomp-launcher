@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-#define RECOMP_OVERLAY_ABI_VERSION 3  /* 2: disc_* (the runtime tray policy); 3: state_* */
+#define RECOMP_OVERLAY_ABI_VERSION 4  /* 2: disc_* (the runtime tray policy); 3: state_* */
 
 /* Bits returned by apply_settings: which edits only take effect after a
  * restart (the overlay labels those rows). */
@@ -66,6 +66,8 @@ typedef struct RecompOverlayHost {
     int  (*state_thumb)(void* ctx, int slot, unsigned* argb, int w, int h);
     int  (*state_save)(void* ctx, int slot);
     int  (*state_load)(void* ctx, int slot);
+    /* v4: 0 pending, 1 completed, -1 failed; menu may stay open. */
+    int (*state_status)(void* ctx);
 } RecompOverlayHost;
 
 /* Call once on the GL thread with the runtime's window and current context. */

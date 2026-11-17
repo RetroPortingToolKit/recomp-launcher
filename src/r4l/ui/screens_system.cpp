@@ -364,6 +364,21 @@ bool App::states_allowed() const {
     return states_supported() && !netplay_locked && host->state_available && host->state_available(host->ctx);
 }
 
+void App::navigate_back() {
+    if (state_request_pending) return;
+    if (disc_browser_open) { disc_browser_open = false; return; }
+    if (main_screen && options_open) {
+        open_options(false);
+    } else if (main_screen && screen != Screen::Main && !setup_only) {
+        const Screen previous = screen;
+        screen = Screen::Main;
+        focus_request = previous;
+        content_focus = false;
+    } else if (!setup_only) {
+        overlay_open = false;
+    }
+}
+
 void App::open_options(bool open) {
     options_open = open;
     if (open) {
@@ -390,8 +405,8 @@ void App::draw_main() {
 // slot queues the request and closes the menu; it runs as the game resumes.
 void App::draw_states(bool save) {
     screen_title(tr(save ? "Save State" : "Load State"),
-                 tr(save ? "Pick a slot to save to. The menu closes and the game saves as it resumes."
-                         : "Pick a slot to load. The menu closes and the game resumes from it."));
+                 tr(save ? "Capture this moment in a snapshot. This is separate from normal career saves."
+                         : "Choose a snapshot to resume from that exact moment. Back returns to the menu."));
     if (!states_allowed()) {
         ImGui::TextDisabled("%s", tr("Save states are unavailable right now (netplay)."));
         return;
@@ -442,7 +457,7 @@ void App::draw_states(bool save) {
             std::snprintf(label, sizeof label, "%s %d    %s", tr("Slot"), i + 1, sl.used ? "" : tr("Empty"));
         }
         ImGui::PushID(i);
-        const bool enabled = save || sl.used;
+        const bool enabled = !state_request_pending && (save || sl.used);
         ImGui::BeginDisabled(!enabled);
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const bool hit = ImGui::Selectable("##slot", states_slot == i, 0, ImVec2(0, row));
@@ -462,7 +477,11 @@ void App::draw_states(bool save) {
                 skin().play("confirm");
                 states_polled = -100;
                 std::fprintf(stdout, "r4l: %s slot %d queued\n", save ? "save" : "load", i + 1);
-                overlay_open = false;  // the request runs as the game resumes
+                if (host->abi_version >= 4 && host->state_status) {
+                    state_request_pending = true;
+                    state_request_load = !save;
+                    s.status = tr(save ? "Saving snapshot..." : "Loading snapshot...");
+                } else overlay_open = false;  // compatibility with older hosts
             } else {
                 s.status = tr(save ? "Could not save to that slot." : "Could not load that slot.");
             }

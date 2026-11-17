@@ -350,6 +350,7 @@ int main(int argc, char** argv) {
             for (int i = 0; i < w * h; ++i) px[i] = 0xff000000u | (static_cast<unsigned>(n * 20) << 16) | ((i % w) * 2);
             return 1;
         };
+        host.state_status = [](void*) { return 1; };
         host.state_save = [](void*, int n) {
             if (n < 0 || n >= 12 || lobby()) return 0;
             slots[n] = 1761700000 + n;

@@ -8,6 +8,8 @@
 
 #include <dirent.h>
 #include <fstream>
+#include <filesystem>
+#include <cctype>
 
 #include <SDL3/SDL.h>
 
@@ -536,6 +538,11 @@ void App::set_pad_source(const std::string& src) {
 }
 
 bool App::handle_event(const SDL_Event& e) {
+    if (disc_browser_open && capture.kind == Capture::None &&
+        e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN && e.gbutton.button == SDL_GAMEPAD_BUTTON_EAST) {
+        disc_browser_open = false;
+        return true;
+    }
     if (capture.kind == Capture::None) return false;
     auto finish = [&]() {
         s.binds_dirty = true;
@@ -778,7 +785,71 @@ void SDLCALL job_progress(void* ctx, float pct, const char* msg) {
 }
 }  // namespace
 
+void App::browse_disc_folder(const std::string& path) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const fs::path folder = fs::weakly_canonical(fs::path(path), ec);
+    if (ec || !fs::is_directory(folder, ec)) {
+        s.status = tr("This folder is unavailable.");
+        return;
+    }
+    std::vector<DiscBrowserEntry> entries;
+    fs::directory_iterator it(folder, fs::directory_options::skip_permission_denied, ec), end;
+    for (; !ec && it != end; it.increment(ec)) {
+        std::error_code type_error;
+        const bool dir = it->is_directory(type_error);
+        if (type_error) continue;
+        const std::string name = it->path().filename().u8string();
+        if (name.empty() || name[0] == '.') continue;
+        std::string ext = it->path().extension().u8string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (!dir && (ext.empty() || (";" + disc_browser_extensions + ";").find(";" + ext.substr(1) + ";") == std::string::npos)) continue;
+        entries.push_back({it->path().u8string(), name, dir});
+    }
+    if (ec) { s.status = tr("This folder could not be read."); return; }
+    std::sort(entries.begin(), entries.end(), [](const DiscBrowserEntry& a, const DiscBrowserEntry& b) {
+        return a.folder != b.folder ? a.folder > b.folder : a.label < b.label;
+    });
+    disc_browser_path = folder.u8string();
+    disc_browser_entries = std::move(entries);
+    disc_browser_open = true;
+    content_focus = true;
+}
+
+void App::draw_disc_browser() {
+    namespace fs = std::filesystem;
+    screen_title(disc_browser_title.c_str(), tr("Open a folder, then choose your USA disc image. For BIN/CUE discs, choose the CUE file."));
+    ImGui::TextWrapped("%s", disc_browser_path.c_str());
+    if (big_button(tr("Back to setup"), ImVec2(0, 44), false)) disc_browser_open = false;
+    script_mark("disc-browser:cancel");
+    const fs::path current(disc_browser_path);
+    if (current.has_parent_path() && current.parent_path() != current) {
+        if (big_button(tr("Parent folder"), ImVec2(0, 44), false)) {
+            browse_disc_folder(current.parent_path().u8string());
+            return;
+        }
+        script_mark("disc-browser:parent");
+    }
+    if (disc_browser_entries.empty()) ImGui::TextWrapped("%s", tr("No disc images here. Choose another folder."));
+    ImGui::BeginChild("disc-folders", ImVec2(0, 0), false);
+    for (size_t i = 0; i < disc_browser_entries.size(); ++i) {
+        const auto entry = disc_browser_entries[i];
+        ImGui::PushID(static_cast<int>(i));
+        const std::string label = entry.folder ? entry.label + " /" : entry.label;
+        const bool selected = big_button(label.c_str(), ImVec2(-1, 44), false);
+        script_mark(("disc-browser:" + entry.label).c_str());
+        ImGui::PopID();
+        if (selected) {
+            if (entry.folder) browse_disc_folder(entry.path);
+            else { s.set_disc(disc_browser_slot, entry.path); disc_browser_open = false; }
+            break;
+        }
+    }
+    ImGui::EndChild();
+}
+
 void App::draw_setup() {
+    if (disc_browser_open) { draw_disc_browser(); return; }
     const RecompLauncherCGameInfo* g = s.game;
     screen_title("Disc setup");
     ImGui::PushStyleColor(ImGuiCol_Text, theme().text_dim);
@@ -822,14 +893,18 @@ void App::draw_setup() {
         script_mark(i == 0 ? "field:disc_path" : "field:disc_path_more");
         ImGui::SameLine();
         if (ImGui::Button("Browse...", ImVec2(-1, 0))) {
-            static std::string pat, desc;
-            pat = patterns_of(g ? g->rom_patterns : nullptr, g ? g->num_rom_patterns : 0, "cue;bin;chd;iso");
-            desc = (g && g->rom_filter_desc) ? g->rom_filter_desc : std::string("PlayStation ") + (g && g->rom_noun ? g->rom_noun : "disc");
-            static SDL_DialogFileFilter filters[1];
-            filters[0] = SDL_DialogFileFilter{desc.c_str(), pat.c_str()};
-            show_open_file(on_file_chosen, new DialogCtx{this, static_cast<int>(i)},
-                                   SDL_GL_GetCurrentWindow(), filters, 1, nullptr, false);
+            disc_browser_slot = static_cast<int>(i);
+            disc_browser_extensions = patterns_of(g ? g->rom_patterns : nullptr, g ? g->num_rom_patterns : 0, "cue;bin;chd;iso");
+            disc_browser_title = g && g->rom_filter_desc ? g->rom_filter_desc :
+                std::string("Choose your ") + (g && g->rom_noun ? g->rom_noun : "game disc");
+            const char* home = std::getenv("HOME");
+            if (!home) home = std::getenv("USERPROFILE");
+            std::filesystem::path initial = d.path.empty() ? std::filesystem::path(home ? home : ".")
+                                                         : std::filesystem::path(d.path).parent_path();
+            if (initial.empty()) initial = home ? home : ".";
+            browse_disc_folder(initial.u8string());
         }
+        script_mark("disc:browse");
         if (!d.path.empty()) {
             if (!d.verified) chip("Could not read this disc", theme().warn);
             else {

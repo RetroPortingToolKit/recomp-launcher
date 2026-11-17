@@ -141,6 +141,7 @@ void App::frame() {
         if (setup_only) {
             navv.push_back(Screen::Setup);  // shown as Select Disc
         } else {
+            if (screen != Screen::Main) navv.push_back(Screen::Back);
             navv.push_back(Screen::Resume);
             if (states_allowed()) {
                 if (game_started) navv.push_back(Screen::SaveState);
@@ -215,12 +216,11 @@ void App::frame() {
             sk.play("confirm");
             request_launch();
         }
-        if (overlay && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+        if ((overlay || disc_browser_open) && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
                         (pad_back_closes && ImGui::IsKeyPressed(ImGuiKey_GamepadBack, false))) &&
             !ImGui::IsAnyItemActive()) {
             sk.play("back");
-            if (main_screen && options_open) open_options(false);  // Options: back to the main screen
-            else overlay_open = false;
+            navigate_back();
         }
     }
 
@@ -292,7 +292,7 @@ void App::frame() {
             if (sc == Screen::Resume) overlay_open = false;
             else if (sc == Screen::QuitGame) quit_confirm = true;
             else if (sc == Screen::Options) open_options(true);
-            else if (sc == Screen::Back) open_options(false);
+            else if (sc == Screen::Back) navigate_back();
             else
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
         }
@@ -497,6 +497,17 @@ void App::restart_chip(size_t off, size_t size, unsigned host_bit) {
 
 void App::overlay_tick() {
     if (!s.io || !host) return;
+    if (state_request_pending && host->abi_version >= 4 && host->state_status) {
+        const int result = host->state_status(host->ctx);
+        if (result) {
+            state_request_pending = false;
+            states_polled = -100;
+            if (result > 0) {
+                s.status = tr(state_request_load ? "Snapshot loaded." : "Snapshot saved.");
+                if (state_request_load) overlay_open = false;
+            } else s.status = tr("The snapshot operation failed. Your game has not been resumed.");
+        }
+    }
     if (std::memcmp(s.io, &applied, sizeof(applied)) != 0) {
         if (host->apply_settings) applied_bits = host->apply_settings(host->ctx, s.io);
         applied = *s.io;

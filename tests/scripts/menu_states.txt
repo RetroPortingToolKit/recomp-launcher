@@ -1,5 +1,5 @@
 # Save State / Load State on the main screen: slot 1 holds a state, slot 3
-# is empty. Saving to 3 closes the menu and fills the slot; loading 3 closes
+# is empty. Saving to 3 keeps the menu open and fills the slot; loading 3 closes
 # the menu (the game resumes from it).
 wait 6
 tap nav:Start Game
@@ -13,6 +13,25 @@ wait 6
 seen load:1
 seen load:3
 expect slot3 0
+# Cancelling a snapshot page returns to the parent, never to the race.
+key Escape
+wait 4
+open 1
+focused nav:Load State
+tap nav:Load State
+wait 4
+pad b
+wait 4
+open 1
+focused nav:Load State
+tap nav:Load State
+wait 4
+tap nav:Back
+wait 4
+open 1
+focused nav:Load State
+tap nav:Load State
+wait 4
 tap load:3
 wait 4
 open 1
@@ -20,10 +39,8 @@ tap nav:Save State
 wait 6
 tap save:3
 wait 4
-open 0
+open 1
 expect slot3 1
-key Escape
-wait 6
 tap nav:Load State
 wait 6
 tap load:3

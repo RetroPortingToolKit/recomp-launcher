@@ -11,7 +11,7 @@ tap steam:add
 wait 4
 seen steam:added
 seen steam:restart
-rail Start Game, Load State, Options, Add to Steam, Quit game
+rail Back, Start Game, Load State, Options, Add to Steam, Quit game
 tap nav:Options
 wait 4
 rail Back, Graphics, Controls, Mods, Netplay, Settings, Disc setup, About
