@@ -17,6 +17,12 @@ focused Window mode
 tap nav:Controls
 wait 4
 focused Modern
+tap nav:Mods
+wait 4
+focused Search mods
+tap nav:Settings
+wait 4
+focused Volume
 tap nav:Graphics
 wait 4
 focused Window mode
