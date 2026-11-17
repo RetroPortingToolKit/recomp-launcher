@@ -432,20 +432,20 @@ void App::draw_introduction() {
         }
         ImGui::EndTable();
     }
-    if (focus_request == Screen::Introduction) ImGui::SetKeyboardFocusHere();
+    if (focus_request == Screen::Introduction) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
     const bool confirm_intro = introduction_first &&
         (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadStart, false));
     if (ImGui::Button(tr(introduction_first ? "Start" : "Back")) || confirm_intro) {
-        std::ofstream marker(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt"));
-        marker << "1\n";
-        const bool start_intro = introduction_first;
-        introduction_first = false;
-        if (start_intro && !(title->race_actions && (title->race_actions() & 8u)))
-            overlay_open = false;
-        screen = Screen::Main;
-        focus_request = Screen::Resume;
+        if (introduction_first) {
+            std::ofstream marker(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt"));
+            marker << "1\n";
+            introduction_first = false;
+            if (!(title->race_actions && (title->race_actions() & 8u))) overlay_open = false;
+            screen = Screen::Main;
+            focus_request = Screen::Resume;
+        } else navigate_back();
     }
-    if (ImGui::IsItemFocused()) focus_request = Screen::Count;
+    if (focus_request == Screen::Introduction && ImGui::IsItemFocused()) focus_request = Screen::Count;
     ImGui::SetItemDefaultFocus();
     script_mark("intro:continue");
 }
