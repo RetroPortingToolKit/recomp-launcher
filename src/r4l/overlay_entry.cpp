@@ -216,6 +216,14 @@ void apply_transitions(Overlay& o) {
         a.game_started = true;  // closing the boot menu starts the game
         a.options_open = false;
         o.open = false;
+        // ImGui trickles rapid down/up events across frames. Once closed we
+        // stop drawing, so a second Resume click could otherwise survive until
+        // the next opening and immediately activate Resume again.
+        ImGuiIO& io = ImGui::GetIO();
+        io.ClearEventsQueue();
+        io.ClearInputKeys();
+        io.ClearInputMouse();
+        { std::lock_guard<std::mutex> lk(o.mu); o.events.clear(); }
         skin().play("back");
         // A disc change needs a new session. Other restart-only edits remain
         // pending until the player next starts the game.
@@ -440,6 +448,10 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         evs.swap(o.events);
     }
     apply_transitions(o);
+    if (!o.open.load()) {
+        ImGui::SetCurrentContext(prev);
+        return;
+    }
     ImGui_ImplOpenGL3_NewFrame();
     ImGuiIO& io = ImGui::GetIO();
     for (const SDL_Event& e : evs) feed(*o.app, e);
