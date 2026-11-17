@@ -333,7 +333,7 @@ void App::frame() {
             }
         }
         ImGui::EndDisabled();
-        if (focus_pending && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
+        if (focus_pending && focus_request == sc && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
             focus_request = Screen::Count;
             focus_request_frames = 0;
         }
