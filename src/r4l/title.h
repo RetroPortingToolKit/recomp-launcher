@@ -104,6 +104,8 @@ struct TitleLayer {
     const TitleNotice* introduction = nullptr;
     int introduction_count = 0;
     int (*race_action_status)() = nullptr; // 0 pending, 1 success, -1 rejected
+    unsigned local_multiplayer_action = 0;
+    bool (*request_local_game)(unsigned players) = nullptr;
 
 };
 

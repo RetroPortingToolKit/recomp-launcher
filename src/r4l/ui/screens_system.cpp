@@ -394,12 +394,32 @@ bool App::introduction_seen() const {
     return std::ifstream(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt")).good();
 }
 
+void App::draw_local_players() {
+    screen_title(tr("Local split-screen"));
+    ImGui::TextWrapped("%s", tr("Race together on this screen. Each player uses their own controller or keyboard bindings."));
+    ImGui::Dummy(ImVec2(0, 12));
+    ImGui::BeginDisabled(race_action_pending);
+    for (unsigned players = 2; players <= static_cast<unsigned>(std::min(title->max_players, 4)); ++players) {
+        const std::string label = std::to_string(players) + " " + tr("players");
+        if (big_button(label.c_str(), ImVec2(240, 48), false)) {
+            if (!netplay_locked && title->request_local_game && title->request_local_game(players)) {
+                race_action_pending = true;
+                s.status = tr("Loading...");
+                if (host && host->set_paused) host->set_paused(host->ctx, 0);
+            } else s.status = tr("Connect the players' controllers or assign their keyboard bindings in Controls.");
+        }
+        script_mark(("local:" + std::to_string(players)).c_str());
+    }
+    ImGui::EndDisabled();
+}
+
 void App::draw_introduction() {
-    screen_title(tr("Welcome to R4"), tr("Your controls and ways to race"));
+    screen_title(tr("Welcome"), tr("Your controls and ways to race"));
     for (int i = 0; i < title->introduction_count; ++i) {
         const TitleNotice& item = title->introduction[i];
-        section(tr(item.heading));
+        ImGui::TextColored(theme().accent, "%s", tr(item.heading));
         ImGui::TextWrapped("%s", tr(item.body));
+        ImGui::Dummy(ImVec2(0, 4));
     }
     if (ImGui::Button(tr(introduction_first ? "Let's race" : "Back"))) {
         std::ofstream marker(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt"));

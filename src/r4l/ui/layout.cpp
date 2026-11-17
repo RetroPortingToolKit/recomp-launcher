@@ -133,7 +133,7 @@ void App::frame() {
     const bool main_rail = main_screen && overlay && !options_open;
     if (main_screen && overlay && !options_open && screen != Screen::Main && screen != Screen::SaveState &&
         screen != Screen::LoadState && screen != Screen::Steam &&
-        screen != Screen::RestartRace && screen != Screen::RetireRace && screen != Screen::Introduction && !(setup_only && screen == Screen::Setup))
+        screen != Screen::RestartRace && screen != Screen::RetireRace && screen != Screen::Introduction && screen != Screen::LocalPlayers && !(setup_only && screen == Screen::Setup))
         options_open = true;  // a page was asked for directly (script, deep link)
     if (main_rail && !states_allowed() && (screen == Screen::SaveState || screen == Screen::LoadState))
         screen = Screen::Main;
@@ -283,6 +283,7 @@ void App::frame() {
             sk.text(dl, "label", iv(brand.x, brand.y + ls.y), sk.label("brand.subtitle", overlay ? "PAUSED" : "RIDGE RACER TYPE 4"));
         }
         ImGui::SetCursorScreenPos(iv(rail.x + 16 * u, brand.y + brand.h + 16 * u));
+        if (nav_n == 0) ImGui::Dummy(ImVec2(0, 0));
     }
     const float item_h = sk.loaded() ? sk.metric("nav_item_height", 46) : 46 * u;
     const float item_gap = sk.loaded() ? sk.metric("nav_item_gap", 4) : 4 * u;
@@ -306,8 +307,13 @@ void App::frame() {
             sk.play("confirm");
             if (sc == Screen::Resume) overlay_open = false;
             else if (sc == Screen::QuitGame) quit_confirm = true;
-            else if (sc >= Screen::GameMode0 && sc <= Screen::GameMode5)
-                queue_game_action(title->game_modes[static_cast<unsigned>(sc) - static_cast<unsigned>(Screen::GameMode0)].action);
+            else if (sc >= Screen::GameMode0 && sc <= Screen::GameMode5) {
+                const unsigned action = title->game_modes[static_cast<unsigned>(sc) - static_cast<unsigned>(Screen::GameMode0)].action;
+                if (action == title->local_multiplayer_action && title->request_local_game) {
+                    screen = Screen::LocalPlayers;
+                    content_focus = true;
+                } else queue_game_action(action);
+            }
             else if (sc == Screen::Options) open_options(true);
             else if (sc == Screen::Back) navigate_back();
             else
@@ -428,6 +434,7 @@ void App::frame() {
     case Screen::About: draw_about(); break;
     case Screen::System: draw_system(); break;
     case Screen::Introduction: draw_introduction(); break;
+    case Screen::LocalPlayers: draw_local_players(); break;
     case Screen::Main: draw_main(); break;
     case Screen::RestartRace: draw_race_action(true); break;
     case Screen::RetireRace: draw_race_action(false); break;
@@ -531,7 +538,7 @@ void App::overlay_tick() {
         const int result = title->race_action_status();
         if (result) {
             race_action_pending = false;
-            if (result > 0) overlay_open = false;
+            if (result > 0) { s.status.clear(); overlay_open = false; }
             else {
                 if (host->set_paused) host->set_paused(host->ctx, 1);
                 s.status = tr("This race action is no longer available.");

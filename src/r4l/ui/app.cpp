@@ -53,6 +53,7 @@ const char* screen_name(Screen s) {
     case Screen::RestartRace: return "Restart race";
     case Screen::RetireRace: return "Retire";
     case Screen::Introduction: return "How to play";
+    case Screen::LocalPlayers: return "Local multiplayer";
     case Screen::GameMode0: return "Game mode";
     case Screen::GameMode1: return "Game mode";
     case Screen::GameMode2: return "Game mode";

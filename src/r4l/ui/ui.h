@@ -27,7 +27,7 @@ enum class Screen {
     // rail entries; Options opens the other pages behind a Back entry.
     Main, Options, Back, SaveState, LoadState,
     Steam,  // controls.steam: Add to Steam (main screen)
-    RestartRace, RetireRace, Introduction, GameMode0, GameMode1, GameMode2, GameMode3, GameMode4, GameMode5,
+    RestartRace, RetireRace, Introduction, LocalPlayers, GameMode0, GameMode1, GameMode2, GameMode3, GameMode4, GameMode5,
     Count
 };
 enum class Mode { Launcher, Overlay };
@@ -121,6 +121,7 @@ struct App {
     double states_polled = -100;
     bool introduction_first = false;
     void draw_introduction();
+    void draw_local_players();
     bool introduction_seen() const;
     bool race_action_pending = false;
     bool state_request_pending = false, state_request_load = false;
