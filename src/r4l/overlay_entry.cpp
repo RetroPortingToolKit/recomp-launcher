@@ -60,6 +60,7 @@ struct Overlay {
     std::atomic<bool> select_hold{false};
     bool select_chord = false;          // main thread
     bool main_menu_auto = false;
+    bool frontend_open = false;
     bool boot_open = false;             // opened at boot: focus Resume
     std::mutex mu;
     std::vector<SDL_Event> events;      // main -> render
@@ -76,7 +77,7 @@ bool boot_menu_wanted(const App& a) {
     if (g_boot_menu_done || !a.surf.automatic("launcher.boot_menu")) return false;
     if (a.s.io && a.s.io->skip_launcher) return false;
     if (const char* e = std::getenv("R4L_BOOT_MENU_DONE"); e && *e == '1') return false;
-    return true;
+    return a.s.needs_setup() || !a.introduction_seen();
 }
 
 ImGuiKey imgui_key(SDL_Scancode sc) {
@@ -170,7 +171,10 @@ void request_open(bool open) {
     if (open == o.open.load()) return;
     if (open) {
         const bool netplay = o.host && o.host->netplay_active && o.host->netplay_active(o.host->ctx);
-        if (!netplay && o.host && o.host->set_paused) o.host->set_paused(o.host->ctx, 1);
+        const bool frontend = o.app->title->race_actions && (o.app->title->race_actions() & 8u);
+        o.frontend_open = frontend;
+        if (!netplay && !frontend && o.host && o.host->set_paused)
+            o.host->set_paused(o.host->ctx, 1);
         o.opening = true;
         o.open = true;
     } else {
@@ -194,7 +198,7 @@ void apply_transitions(Overlay& o) {
             if (o.boot_open && a.title->introduction_count && !a.introduction_seen()) {
                 a.introduction_first = true;
                 a.screen = Screen::Introduction;
-                a.content_focus = true;
+                a.focus_request = Screen::Introduction;
             }
         } else {
             a.screen = Screen::Graphics;
@@ -438,6 +442,10 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         if (title.race_actions && (title.race_actions() & 8u)) request_open(true);
     }
     if (!g_ov || !g_ov->open.load()) return;
+    if (g_ov->frontend_open && g_ov->app->title->race_actions &&
+        !(g_ov->app->title->race_actions() & 8u) &&
+        !g_ov->app->race_action_pending && g_ov->app->screen == Screen::Main)
+        g_ov->closing = true;
     Overlay& o = *g_ov;
     ImGuiContext* prev = ImGui::GetCurrentContext();
     ImGui::SetCurrentContext(o.ctx);

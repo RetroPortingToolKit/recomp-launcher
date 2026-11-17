@@ -105,7 +105,7 @@ struct App {
     float ui_scale = 0;
     Screen focus_request = Screen::Count;  // move nav focus once
     int focus_request_frames = 0;          // frames focus_request has been pending
-    bool content_focus = false;                // Right from the rail: focus the page's first control
+    bool content_focus = false;                // Enter the page at its first available control
     bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
     bool pad_back_closes = false;              // launcher.select_menu: Select acts as B in the menu
     bool main_screen = false;                  // launcher.main_screen: main screen + Options
@@ -125,6 +125,7 @@ struct App {
     bool introduction_seen() const;
     bool race_action_pending = false;
     bool state_request_pending = false, state_request_load = false;
+    bool states_focus_requested = false;
     int states_slot = 0;                       // last slot picked
     Capture capture;
     Job job;

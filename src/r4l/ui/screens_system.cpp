@@ -366,13 +366,18 @@ bool App::states_allowed() const {
 
 void App::navigate_back() {
     if (state_request_pending || race_action_pending || introduction_first) return;
-    if (disc_browser_open) { disc_browser_open = false; return; }
+    if (disc_browser_open) { disc_browser_open = false; content_focus = true; return; }
     if (main_screen && options_open) {
         open_options(false);
     } else if (main_screen && screen != Screen::Main && !setup_only) {
         const Screen previous = screen;
         screen = Screen::Main;
         focus_request = previous;
+        if (previous == Screen::LocalPlayers) {
+            for (int i = 0; title->game_modes && i < title->game_mode_count && i < 6; ++i)
+                if (title->game_modes[i].action == title->local_multiplayer_action)
+                    focus_request = static_cast<Screen>(static_cast<int>(Screen::GameMode0) + i);
+        }
         content_focus = false;
     } else if (!setup_only && !(title->race_actions && (title->race_actions() & 8u))) {
         overlay_open = false;
@@ -383,8 +388,10 @@ void App::open_options(bool open) {
     options_open = open;
     if (open) {
         screen = surf.any_shown("graphics.") ? Screen::Graphics : surf.any_shown("controls.") ? Screen::Controls : Screen::System;
-        focus_request = Screen::Back;
+        focus_request = Screen::Count;
+        content_focus = true;
     } else {
+        content_focus = false;
         screen = Screen::Main;
         focus_request = Screen::Options;
     }
@@ -414,20 +421,32 @@ void App::draw_local_players() {
 }
 
 void App::draw_introduction() {
-    screen_title(tr("Welcome"), tr("Your controls and ways to race"));
-    for (int i = 0; i < title->introduction_count; ++i) {
-        const TitleNotice& item = title->introduction[i];
-        ImGui::TextColored(theme().accent, "%s", tr(item.heading));
-        ImGui::TextWrapped("%s", tr(item.body));
-        ImGui::Dummy(ImVec2(0, 4));
+    screen_title(title->display_name, tr("Your controls and ways to race"));
+    if (ImGui::BeginTable("intro_sections", 2, ImGuiTableFlags_SizingStretchSame)) {
+        for (int i = 0; i < title->introduction_count; ++i) {
+            ImGui::TableNextColumn();
+            const TitleNotice& item = title->introduction[i];
+            ImGui::TextColored(theme().accent, "%s", tr(item.heading));
+            ImGui::TextWrapped("%s", tr(item.body));
+            ImGui::Dummy(ImVec2(0, 12));
+        }
+        ImGui::EndTable();
     }
-    if (ImGui::Button(tr(introduction_first ? "Let's race" : "Back"))) {
+    if (focus_request == Screen::Introduction) ImGui::SetKeyboardFocusHere();
+    const bool confirm_intro = introduction_first &&
+        (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadStart, false));
+    if (ImGui::Button(tr(introduction_first ? "Start" : "Back")) || confirm_intro) {
         std::ofstream marker(sibling_path(s.launcher_prefs_path(), "introduction-v1.txt"));
         marker << "1\n";
+        const bool start_intro = introduction_first;
         introduction_first = false;
+        if (start_intro && !(title->race_actions && (title->race_actions() & 8u)))
+            overlay_open = false;
         screen = Screen::Main;
         focus_request = Screen::Resume;
     }
+    if (ImGui::IsItemFocused()) focus_request = Screen::Count;
+    ImGui::SetItemDefaultFocus();
     script_mark("intro:continue");
 }
 
@@ -459,11 +478,11 @@ void App::draw_race_action(bool restart) {
 }
 
 void App::draw_main() {
-    const char* name = s.game && s.game->name ? s.game->name : "";
+    const char* name = title->display_name;
     screen_title(name, tr(game_started ? "Paused" : "Ready to start"));
     ImGui::Dummy(ImVec2(0, 8));
     ImGui::PushStyleColor(ImGuiCol_Text, theme().text);  // readable on the dark overlay panel
-    ImGui::TextWrapped("%s", tr(game_started ? "Ready when you are." : "Choose your next race."));
+
     if (netplay_locked) ImGui::TextWrapped("%s", tr("Save states are unavailable during netplay."));
     ImGui::PopStyleColor();
 }
@@ -487,6 +506,12 @@ void App::draw_states(bool save) {
             states[i].used = host->state_info && host->state_info(host->ctx, i, &t);
             states[i].mtime = states[i].used ? t : 0;
         }
+    }
+    int first_slot = -1;
+    for (int i = 0; i < n; ++i) if (save || states[i].used) { first_slot = i; break; }
+    if (first_slot < 0 && states_focus_requested) {
+        focus_request = Screen::Back;
+        states_focus_requested = false;
     }
     const float u = ui_scale > 0 ? ui_scale : 1.0f;
     const float th = 60 * u, tw = th * 4 / 3, row = th + 12 * u;
@@ -527,7 +552,9 @@ void App::draw_states(bool save) {
         const bool enabled = !state_request_pending && (save || sl.used);
         ImGui::BeginDisabled(!enabled);
         const ImVec2 p = ImGui::GetCursorScreenPos();
+        if (states_focus_requested && i == first_slot) ImGui::SetKeyboardFocusHere();
         const bool hit = ImGui::Selectable("##slot", states_slot == i, 0, ImVec2(0, row));
+        if (ImGui::IsItemFocused()) { states_slot = i; states_focus_requested = false; }
         ImGui::EndDisabled();
         ImDrawList* dl = ImGui::GetWindowDrawList();
         const ImVec2 a(p.x + 6 * u, p.y + 6 * u), b(a.x + tw, a.y + th);

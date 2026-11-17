@@ -13,7 +13,13 @@ focused nav:Start Game
 tap nav:Options
 wait 4
 rail Back, Graphics, Controls, Mods, Netplay, Settings, Disc setup, About
-focused nav:Back
+focused Window mode
+tap nav:Controls
+wait 4
+focused Modern
+tap nav:Graphics
+wait 4
+focused Window mode
 # Back returns to the main screen, focus on Options...
 tap nav:Back
 wait 4

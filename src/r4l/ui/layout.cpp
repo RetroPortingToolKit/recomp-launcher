@@ -186,7 +186,11 @@ void App::frame() {
         if (!main_screen && !setup_only && steam_offered()) navv.push_back(Screen::Steam);
         if (overlay && !main_screen) navv.push_back(Screen::QuitGame);
     }
-    if (disc_browser_open || introduction_first) navv.clear();
+    if (screen == Screen::SaveState || screen == Screen::LoadState) {
+        navv.clear();
+        navv.push_back(Screen::Back);
+    }
+    if (disc_browser_open || screen == Screen::Introduction) navv.clear();
     const Screen* nav = navv.data();
     const int nav_n = static_cast<int>(navv.size());
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -194,6 +198,11 @@ void App::frame() {
     sk.begin_frame(W, H, std::string(overlay ? "Overlay." : "") + skin_key(screen), time);
     if (screen != last_focus_screen) {  // per-screen palette overrides feed ImGui colours
         last_focus_screen = screen;
+        if (screen == Screen::SaveState || screen == Screen::LoadState) {
+            states_focus_requested = true;
+            states_polled = -100;
+            focus_request = Screen::Count;
+        }
         apply_theme(*title, ui_scale > 0 ? ui_scale : 1.0f);
         apply_skin_theme();
     }
@@ -221,7 +230,8 @@ void App::frame() {
             if (!pages) return;
             do idx = (idx + nav_n + d) % nav_n; while (action(nav[idx]));
             screen = nav[idx];
-            focus_request = screen;
+            focus_request = Screen::Count;
+            content_focus = true;
             sk.play("move");
         };
         if (ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false)) go(-1);
@@ -247,7 +257,7 @@ void App::frame() {
     ImGui::PopStyleVar();
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
     if (overlay) {
-        bg->AddRectFilled(iv(0, 0), iv(W, H), u32(game_main_menu ? theme().bg : sk.color("overlay_dim", ImVec4(0, 0, 0, 0.62f))));
+        bg->AddRectFilled(iv(0, 0), iv(W, H), u32(sk.color("overlay_dim", ImVec4(0, 0, 0, 0.25f))));
     } else if (sk.loaded()) {
         sk.draw_background(bg);
     } else {
@@ -266,7 +276,7 @@ void App::frame() {
     const Rect footer = sk.rect(pre + "footer", Rect{panel.x, panel.y + panel.h - footer_h, panel.w, footer_h}, &panel);
     const float rail_w = std::max(200.0f * u, panel.w * 0.19f);
     const Rect rail = sk.rect(pre + "rail", Rect{panel.x, panel.y, rail_w, panel.h - footer_h}, &panel);
-    const Rect content = sk.rect(pre + "content", Rect{rail.x + rail.w, panel.y, panel.x + panel.w - (rail.x + rail.w), panel.h - footer_h}, &panel);
+    const Rect content = screen == Screen::Introduction ? Rect{panel.x + 24 * u, panel.y, panel.w - 48 * u, panel.h - footer_h} : sk.rect(pre + "content", Rect{rail.x + rail.w, panel.y, panel.x + panel.w - (rail.x + rail.w), panel.h - footer_h}, &panel);
     if (sk.loaded() && !overlay) sk.draw_sprites(ImGui::GetBackgroundDrawList());
 
     // ---------------- Rail
@@ -277,7 +287,7 @@ void App::frame() {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     {
         const Rect brand = sk.rect(pre + "brand", Rect{rail.x + 16 * u, rail.y + 20 * u, rail.w - 32 * u, 60 * u});
-        if (sk.loaded() && brand.h > 0) {
+        if (sk.loaded() && brand.h > 0 && screen != Screen::Main && screen != Screen::Introduction) {
             sk.text(dl, "logo", iv(brand.x, brand.y), sk.label("brand.title", "R4"));
             const ImVec2 ls = sk.text_size("logo", sk.label("brand.title", "R4"));
             sk.text(dl, "label", iv(brand.x, brand.y + ls.y), sk.label("brand.subtitle", overlay ? "PAUSED" : "RIDGE RACER TYPE 4"));
@@ -316,8 +326,11 @@ void App::frame() {
             }
             else if (sc == Screen::Options) open_options(true);
             else if (sc == Screen::Back) navigate_back();
-            else
+            else {
                 screen = (sc == Screen::Home && setup_mode) ? Screen::Setup : sc;
+                focus_request = Screen::Count;
+                content_focus = true;
+            }
         }
         ImGui::EndDisabled();
         if (focus_pending && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
@@ -420,8 +433,9 @@ void App::frame() {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, sk.color("content", ImVec4(0, 0, 0, 0)));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(36 * u, 28 * u));
     ImGui::BeginChild("##content", ImVec2(content.w, content.h), ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened);
-    if (content_focus) {  // Right from the rail: the page's first control
-        ImGui::SetKeyboardFocusHere();
+    if (content_focus) {  // Enter a page at its first control
+        ImGui::FocusWindow(ImGui::GetCurrentWindow());
+        ImGui::NavInitWindow(ImGui::GetCurrentWindow(), true);
         content_focus = false;
     }
     switch (screen) {

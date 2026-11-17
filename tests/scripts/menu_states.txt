@@ -11,6 +11,9 @@ open 1
 tap nav:Load State
 wait 6
 seen load:1
+focused load:1
+rail Back
+unseen nav:Save State
 seen load:3
 expect slot3 0
 # Cancelling a snapshot page returns to the parent, never to the race.
@@ -35,12 +38,18 @@ wait 4
 tap load:3
 wait 4
 open 1
+tap nav:Back
+wait 4
 tap nav:Save State
 wait 6
+focused save:1
+rail Back
 tap save:3
 wait 4
 open 1
 expect slot3 1
+tap nav:Back
+wait 4
 tap nav:Load State
 wait 6
 tap load:3

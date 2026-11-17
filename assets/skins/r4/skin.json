@@ -9,11 +9,11 @@
   "palette": {
     "bg": "#050508", "surface": "#0c0c12e6", "surface_hi": "#1b1b26", "line": "#2c2c3c",
     "text": "#f4f4f0", "text_dim": "#8f8f9e", "accent": "#ffb000", "accent2": "#e8333a",
-    "rail": "#00000000", "footer": "#000000", "content": "#00000000",
+    "rail": "#00000000", "footer": "#00000000", "content": "#00000000",
     "control": "#16161f", "control_hover": "#26263a", "focus": "#ffb000",
     "nav": "#f0f0f0", "nav_selected": "#ffffff", "nav_item": "#4a4a4ae6", "nav_item_border": "#d8d8d8",
     "play": "#4a4a4ae6", "play_hover": "#6a6a6a", "play_text": "#ffffff",
-    "hero_fade": "#050508", "overlay_dim": "#000000b0", "overlay_panel": "#07070ce8",
+    "hero_fade": "#050508", "overlay_dim": "#00000066", "overlay_panel": "#00000000",
     "accent@Graphics": "#3c3c3c",
     "play@Graphics": "#00000000",
     "play_hover@Graphics": "#00000022",
@@ -173,7 +173,7 @@
     "label@System": { "color": "#111111", "bitmap": "$disc/r4/font.fnt", "size": 16 }
   },
   "metrics": { "radius": 2, "control_radius": 2, "nav_item_height": 34, "nav_item_gap": 4, "nav_item_height@Home": 46, "nav_item_gap@Home": 3, "nav_item_border_px": 1,
-               "hero_height": 10, "hero_art": 0, "play_slant": 0, "subtitle": 0, "heading_gap": 30,
+               "hero_height": 10, "hero_art": 0, "play_slant": 0, "subtitle": 0, "heading_gap": 30, "heading_gap@Ridge Racer Type 4 Remastered": 8,
                "preset_vertical@Graphics": 1, "preset_box_w": 384, "preset_box_h": 42, "preset_pitch": 60, "preset_top": 147 },
   "layout": {
     "rail":    { "anchor": "top-left", "x": 0, "y": 0, "w": 270, "h": "fill-40" },
