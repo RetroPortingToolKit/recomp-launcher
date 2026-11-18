@@ -170,7 +170,7 @@ void draw_hero(void* dl_v, float x0, float y0, float x1, float y1, double t) {
 
 const TitleLayer kR4 = {
     "r4",
-    "R4: Ridge Racer Type 4",
+    "Ridge Racer Type 4 Remixed",
     "Native PC recompilation · SLUS-00797",
     "SLUS-00797",
     {255, 92, 54},
@@ -193,7 +193,7 @@ const TitleLayer kR4 = {
     static_cast<int>(sizeof(kSurface) / sizeof(kSurface[0])),
     extract_r4_assets,
     draw_hero,
-    "Ridge Racer Type 4 Recompiled",  // Add to Steam: library name
+    "Ridge Racer Type 4 Remixed",  // Add to Steam: library name
 };
 
 }  // namespace

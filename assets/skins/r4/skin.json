@@ -173,7 +173,7 @@
     "label@System": { "color": "#111111", "bitmap": "$disc/r4/font.fnt", "size": 16 }
   },
   "metrics": { "radius": 2, "control_radius": 2, "nav_item_height": 34, "nav_item_gap": 4, "nav_item_height@Home": 46, "nav_item_gap@Home": 3, "nav_item_border_px": 1,
-               "hero_height": 10, "hero_art": 0, "play_slant": 0, "subtitle": 0, "heading_gap": 30, "heading_gap@Ridge Racer Type 4 Remastered": 8,
+               "hero_height": 10, "hero_art": 0, "play_slant": 0, "subtitle": 0, "heading_gap": 30, "heading_gap@Ridge Racer Type 4 Remixed": 8,
                "preset_vertical@Graphics": 1, "preset_box_w": 384, "preset_box_h": 42, "preset_pitch": 60, "preset_top": 147 },
   "layout": {
     "rail":    { "anchor": "top-left", "x": 0, "y": 0, "w": 270, "h": "fill-40" },
@@ -248,9 +248,9 @@
     "title.About": "*Mode : About",
     "title.Disc setup": "*Mode : Disc setup",
     "title.Settings": "*Mode : Options",
-    "brand.title": "R4", "brand.subtitle": "RIDGE RACER TYPE 4",
+    "brand.title": "R4", "brand.subtitle": "RIDGE RACER TYPE 4 REMIXED",
     "nav.Home": "Race", "nav.Graphics": "Display", "nav.Mods": "Garage", "nav.Controls": "Controls",
-    "nav.Netplay": "Netplay", "nav.About": "Credits", "play": "*PRESS START BUTTON", "home.title": "Ridge Racer Type 4",
+    "nav.Netplay": "Netplay", "nav.About": "Credits", "play": "*PRESS START BUTTON", "home.title": "Ridge Racer Type 4 Remixed",
     "home.tagline": "Recompiled natively · SLUS-00797"
   }
 }

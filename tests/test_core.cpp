@@ -404,7 +404,7 @@ static void test_steam_shortcuts(const std::string& dir) {
     CHECK(steam_user_config_dirs(root).size() == 2);
     const std::string exe = "C:/Games/R4/r4-runtime.exe";
     CHECK(!steam_shortcut_registered(root, exe));
-    SteamShortcut sc{"Ridge Racer Type 4 Recompiled", exe, "C:/Games/R4/", "C:/Games/R4/r4-runtime.exe", ""};
+    SteamShortcut sc{"Ridge Racer Type 4 Remixed", exe, "C:/Games/R4/", "C:/Games/R4/r4-runtime.exe", ""};
     std::string err;
     CHECK(steam_add_shortcut(root, sc, &err) == 2);
     CHECK(err.empty());
