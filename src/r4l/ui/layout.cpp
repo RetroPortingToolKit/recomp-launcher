@@ -568,7 +568,10 @@ void App::overlay_tick() {
             states_polled = -100;
             if (result > 0) {
                 s.status = tr(state_request_load ? "Snapshot loaded." : "Snapshot saved.");
-                if (state_request_load) overlay_open = false;
+                if (state_request_load) {
+                    if (title->state_loaded) title->state_loaded();
+                    overlay_open = false;
+                }
             } else s.status = tr("The snapshot operation failed. Your game has not been resumed.");
         }
     }

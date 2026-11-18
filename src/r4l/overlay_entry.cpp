@@ -61,6 +61,9 @@ struct Overlay {
     bool select_chord = false;          // main thread
     bool main_menu_auto = false;
     bool frontend_open = false;
+    GLuint frontend_backdrop = 0;
+    int backdrop_w = 0, backdrop_h = 0;
+    unsigned backdrop_frame = 0;
     bool boot_open = false;             // opened at boot: focus Resume
     std::mutex mu;
     std::vector<SDL_Event> events;      // main -> render
@@ -485,6 +488,34 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         ImGui::GetCurrentContext()->TestEngineHookItems = true;
     }
     ImGui::NewFrame();
+    if (o.frontend_open && o.app->title->race_actions) {
+        const unsigned actions = o.app->title->race_actions();
+        const bool hold = (actions & 16u) != 0;
+        if ((actions & 8u) && !hold && (++o.backdrop_frame % 6u == 1u || !o.frontend_backdrop)) {
+            GLint previous_texture = 0;
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
+            if (!o.frontend_backdrop) glGenTextures(1, &o.frontend_backdrop);
+            glBindTexture(GL_TEXTURE_2D, o.frontend_backdrop);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            if (o.backdrop_w != fb_w || o.backdrop_h != fb_h) {
+                glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, fb_w, fb_h, 0);
+                o.backdrop_w = fb_w; o.backdrop_h = fb_h;
+            } else glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, fb_w, fb_h);
+            glBindTexture(GL_TEXTURE_2D, previous_texture);
+        }
+        if (hold) {
+            auto* bg = ImGui::GetBackgroundDrawList();
+            if (o.frontend_backdrop)
+                bg->AddImage((ImTextureID)(intptr_t)o.frontend_backdrop, ImVec2(0,0),
+                             ImVec2(fb_w,fb_h), ImVec2(0,1), ImVec2(1,0));
+            else {
+                bg->AddRectFilled(ImVec2(0,0), ImVec2(fb_w,fb_h), IM_COL32(18,19,25,255));
+                if (o.app->title->draw_hero)
+                    o.app->title->draw_hero(bg, 0, 0, fb_w, fb_h, now / 1e9);
+            }
+        }
+    }
     if (std::getenv("R4L_SCRIPT_DEBUG") && ImGui::GetIO().MouseClicked[0]) {
         ImGuiContext& g = *ImGui::GetCurrentContext();
         std::fprintf(stderr, "[r4l] click at %.0f,%.0f over %s\n", g.IO.MousePos.x, g.IO.MousePos.y,
@@ -504,6 +535,7 @@ extern "C" void recomp_overlay_shutdown(void) {
     ImGuiContext* prev = ImGui::GetCurrentContext();
     ImGui::SetCurrentContext(g_ov->ctx);
     if (g_ov->gl_ready) {
+        if (g_ov->frontend_backdrop) glDeleteTextures(1, &g_ov->frontend_backdrop);
         skin().unload();
         ImGui_ImplOpenGL3_Shutdown();
     }

@@ -96,6 +96,7 @@ struct TitleLayer {
     // Optional game-thread bridge. UI reads atomics and queues an action;
     // the title executes original game code at a safe guest boundary.
     // Bits: 1 = race pause, 2 = Restart, 4 = Retire, 8 = main menu.
+    // Bit 4 = keep the last frontend backdrop while the title loads.
     // Bits 8..13 select the title's six original game modes.
     unsigned (*race_actions)() = nullptr;
     bool (*request_race_action)(unsigned action) = nullptr;
@@ -106,6 +107,7 @@ struct TitleLayer {
     int (*race_action_status)() = nullptr; // 0 pending, 1 success, -1 rejected
     unsigned local_multiplayer_action = 0;
     bool (*request_local_game)(unsigned players) = nullptr;
+    void (*state_loaded)() = nullptr; // clear title-owned frontend presentation state
 
 };
 
