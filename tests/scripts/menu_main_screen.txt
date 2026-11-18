@@ -14,6 +14,19 @@ tap nav:Options
 wait 4
 rail Back, Graphics, Controls, Mods, Netplay, Settings, Disc setup, About
 focused Window mode
+# Cancel belongs to the open dropdown, not the parent Options page.
+key Return
+wait 4
+key Escape
+wait 4
+seen nav:Graphics
+focused Window mode
+key Return
+wait 4
+pad b
+wait 4
+seen nav:Graphics
+focused Window mode
 tap nav:Controls
 wait 4
 focused Modern

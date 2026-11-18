@@ -106,6 +106,8 @@ struct App {
     Screen focus_request = Screen::Count;  // move nav focus once
     int focus_request_frames = 0;          // frames focus_request has been pending
     bool content_focus = false;                // Enter the page at its first available control
+    bool widget_owns_cancel = false;
+    void prepare_frame();
     bool quit_confirm = false;                 // Quit game pressed; the Yes/No dialog opens
     bool pad_back_closes = false;              // launcher.select_menu: Select acts as B in the menu
     bool main_screen = false;                  // launcher.main_screen: main screen + Options

@@ -88,6 +88,12 @@ void apply_skin_theme() {
     st.GrabRounding = st.FrameRounding;
 }
 
+void App::prepare_frame() {
+    // NewFrame consumes Cancel to dismiss popups or deactivate editors. Keep
+    // that ownership through our page navigation, even after they have closed.
+    widget_owns_cancel = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopup) || ImGui::IsAnyItemActive();
+}
+
 void App::frame() {
     time = ImGui::GetTime();
     s.tick();
@@ -176,7 +182,7 @@ void App::frame() {
             if (title->introduction_count) navv.push_back(Screen::Introduction);
             if (game_main_menu && steam_offered()) navv.push_back(Screen::Steam);
             if (surf.any_shown("mods.") && mods.available()) navv.push_back(Screen::Mods);
-            if ((!overlay || in_game) && surf.any_shown("netplay.") && s.game && s.game->netplay_supported && s.game->netplay)
+            if ((!overlay || in_game || game_main_menu) && surf.any_shown("netplay.") && s.game && s.game->netplay_supported && s.game->netplay)
                 navv.push_back(Screen::Netplay);
             if (surf.any_shown("audio.") || surf.any_shown("system.") || S("bios.select")) navv.push_back(Screen::System);
         }
@@ -242,7 +248,7 @@ void App::frame() {
         }
         if ((overlay || disc_browser_open) && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
                         (pad_back_closes && ImGui::IsKeyPressed(ImGuiKey_GamepadBack, false))) &&
-            !ImGui::IsAnyItemActive()) {
+            !widget_owns_cancel && !ImGui::IsAnyItemActive()) {
             sk.play("back");
             navigate_back();
         }

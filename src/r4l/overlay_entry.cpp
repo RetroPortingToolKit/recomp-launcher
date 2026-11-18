@@ -487,6 +487,7 @@ extern "C" void recomp_overlay_render(int fb_w, int fb_h) {
         script_frame_begin();
         ImGui::GetCurrentContext()->TestEngineHookItems = true;
     }
+    o.app->prepare_frame();
     ImGui::NewFrame();
     if (o.frontend_open && o.app->title->race_actions) {
         const unsigned actions = o.app->title->race_actions();

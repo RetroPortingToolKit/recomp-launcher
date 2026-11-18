@@ -115,6 +115,7 @@ extern "C" int recomp_launcher_run_window(const char* window_title, RecompLaunch
             ImGui::GetCurrentContext()->TestEngineHookItems = true;
         }
         if (!plat.pump(app)) app.request_quit();
+        app.prepare_frame();
         plat.begin_frame();
         app.frame();
         plat.end_frame(shot != nullptr || scripted);
