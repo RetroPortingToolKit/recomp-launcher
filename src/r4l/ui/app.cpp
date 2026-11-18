@@ -1099,7 +1099,8 @@ void App::draw_about() {
         dl->ChannelsSetCurrent(1);
         ImGui::SetCursorScreenPos(ImVec2(top.x + pad.x, top.y + pad.y));
         ImGui::BeginGroup();
-        ImGui::PushTextWrapPos(top.x + card_w - pad.x);
+        // Text wrap positions are window-local, unlike the card's screen rect.
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + card_w - 2.0f * pad.x);
         ImGui::PushFont(theme().bold, 0.0f);
         ImGui::TextUnformatted(n.heading);
         ImGui::PopFont();
