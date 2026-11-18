@@ -33,9 +33,30 @@ focused Modern
 tap nav:Mods
 wait 4
 focused Search mods
+tap mods:disable-all
+wait 4
+seen mods:disable-confirm
+pad b
+wait 4
+unseen mods:disable-confirm
+seen nav:Mods
 tap nav:Settings
 wait 4
 focused Volume
+tap settings:restore
+wait 4
+seen restore:confirm
+pad b
+wait 4
+unseen restore:confirm
+seen nav:Settings
+tap settings:restore
+wait 4
+seen restore:confirm
+key Escape
+wait 4
+unseen restore:confirm
+seen nav:Settings
 tap nav:Graphics
 wait 4
 focused Window mode

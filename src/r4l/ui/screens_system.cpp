@@ -332,14 +332,17 @@ void App::draw_system() {
     if (have_defaults) {
         ImGui::Dummy(ImVec2(0, 10));
         if (ImGui::Button(tr("Restore defaults"))) ImGui::OpenPopup("restore");
+        script_mark("settings:restore");
         if (ImGui::BeginPopupModal("restore", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::TextUnformatted(tr("Reset every setting and binding to its default?"));
+            script_mark("restore:confirm");
             if (ImGui::Button(tr("Restore"))) {
                 restore_defaults();
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SameLine();
-            if (ImGui::Button(tr("Cancel"))) ImGui::CloseCurrentPopup();
+            if (ImGui::Button(tr("Cancel")) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+                ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
     }

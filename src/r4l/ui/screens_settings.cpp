@@ -481,14 +481,17 @@ void App::draw_mods() {
     }
     ImGui::SameLine();
     if (ImGui::Button(tr("Turn all off"))) ImGui::OpenPopup("disable_all");
+    script_mark("mods:disable-all");
     if (ImGui::BeginPopupModal("disable_all", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted(tr("Turn every mod feature off?"));
+        script_mark("mods:disable-confirm");
         if (ImGui::Button(tr("Turn off"))) {
             s.status = std::to_string(mods.disable_all()) + " " + tr("features turned off");
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button(tr("Cancel"))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr("Cancel")) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+            ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
     {
