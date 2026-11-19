@@ -384,6 +384,10 @@ void App::navigate_back() {
         content_focus = false;
     } else if (!setup_only && !(title->race_actions && (title->race_actions() & 8u))) {
         overlay_open = false;
+    } else if (rail_focus != Screen::Count) {
+        // The home menu has nothing to go back to; keep the highlight where
+        // it was instead of letting the nav cancel clear it.
+        focus_request = rail_focus;
     }
 }
 

@@ -338,6 +338,7 @@ void App::frame() {
                 content_focus = true;
             }
         }
+        if (ImGui::IsItemFocused()) rail_focus = sc;
         ImGui::EndDisabled();
         if (focus_pending && focus_request == sc && (ImGui::IsItemFocused() || ++focus_request_frames > 30)) {
             focus_request = Screen::Count;
@@ -491,6 +492,9 @@ void App::frame() {
         ftxt(tr("A Select    Enter Select"), theme().text_dim);
     } else if (disc_browser_open || setup_only) {
         ftxt("A Select    B Back    Enter Select    Esc Back", theme().text_dim);
+    } else if (nav_n == 0) {
+        // Full-screen cards (How to play) have no page rail to switch.
+        ftxt("A Select    B Back", theme().text_dim);
     } else {
         const bool child_page = main_screen && (options_open || screen != Screen::Main);
         ftxt(sk.label(overlay ? "footer.overlay" : "footer.hints",

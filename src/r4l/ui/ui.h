@@ -105,6 +105,7 @@ struct App {
     float ui_scale = 0;
     Screen focus_request = Screen::Count;  // move nav focus once
     int focus_request_frames = 0;          // frames focus_request has been pending
+    Screen rail_focus = Screen::Count;     // last rail entry holding the nav focus
     bool content_focus = false;                // Enter the page at its first available control
     bool widget_owns_cancel = false;
     void prepare_frame();
